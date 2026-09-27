@@ -562,12 +562,12 @@
     display:flex; align-items:center; justify-content:space-between; gap:12px;
     padding:16px 20px; border-bottom:1px solid var(--border); flex:none;
   }
-  .detail-modal-title{ font-size:15px; font-weight:700; color:var(--text); }
-  .detail-modal-close{
+  .detail-modal-title{ font-size:15px; font-weight:700; color:var(--text); flex:1; min-width:0; }
+  .detail-modal-close, .detail-modal-back{
     border:0; background:transparent; color:var(--text-faint); cursor:pointer;
-    padding:4px; border-radius:6px; line-height:0;
+    padding:4px; border-radius:6px; line-height:0; flex:none;
   }
-  .detail-modal-close:hover{ color:var(--text); background:var(--surface-2); }
+  .detail-modal-close:hover, .detail-modal-back:hover{ color:var(--text); background:var(--surface-2); }
   .detail-modal-body{ padding:20px; overflow-y:auto; }
   .card-banner, .ego-card-portrait{ cursor:zoom-in; }
   .image-lightbox{ position:fixed; inset:0; z-index:90; display:flex; align-items:center; justify-content:center; padding:32px; }

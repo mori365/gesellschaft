@@ -5697,11 +5697,31 @@ const SUB_GROUP_KEYS = new Set(
 );
 function enemyGroupKey(e){ return e.group ? `${e.chapter}|${e.group}` : null; }
 function enemyIdentity(e, idx){
-  if (e.name === "???") return `__unique_${idx}`;
   const groupKey = enemyGroupKey(e);
   if (groupKey && SUB_GROUP_KEYS.has(groupKey)) return groupKey;
+  if (e.name === "???") return `__unique_${idx}`;
   if (PHASE_NAME_RE.test(e.name) || (groupKey && PHASE_GROUP_KEYS.has(groupKey))) return groupKey;
   return e.name;
+}
+// 하위 개체로 등장하지만, 다른 곳(다른 그룹/챕터)에서 독립된 개체로도 존재하는 경우
+// 그 독립 카드로 바로 이동할 수 있게 하기 위한 탐색. "???"는 서로 다른 개체를 가리킬
+// 수 있어 이름만으로 연결하지 않는다.
+function enemyFindStandalone(e, myGroupKey, excludeIdxs){
+  if (e.name === "???") return null;
+  for (let i = 0; i < ENEMY_DATA.length; i++){
+    if (excludeIdxs.includes(i)) continue;
+    const x = ENEMY_DATA[i];
+    if (x.name !== e.name) continue;
+    if (enemyGroupKey(x) === myGroupKey) continue;
+    return i;
+  }
+  return null;
+}
+function enemyGroupIdxsFor(idx){
+  const key = enemyIdentity(ENEMY_DATA[idx], idx);
+  const out = [];
+  ENEMY_DATA.forEach((x, i) => { if (enemyIdentity(x, i) === key) out.push(i); });
+  return out;
 }
 // 카드/상세 탭에서 메인 적(들)을 앞에, 하위 개체를 뒤에 (각각 원래 순서 유지)
 function enemySortMainFirst(items){
@@ -5818,12 +5838,15 @@ function enemySkillRowHTML(s){
     : body;
   return `<div class="skill-tt-special-block">${content}</div>`;
 }
-function enemyDetailBodyHTML(e){
+function enemyDetailBodyHTML(e, curIdxs){
   const rows = [];
   if (e.image) rows.push(`<img class="enemy-detail-image" src="${e.image}" alt="">`);
   const groupLabel = enemyGroupLabel(e);
   if (e.role === "sub"){
-    rows.push(`<div class="skill-tt-row"><span>소속</span><span>${escapeHTML(groupLabel || "")}${e.phase ? ` (${escapeHTML(e.phase)} 등장)` : ""}</span></div>`);
+    const standaloneIdx = enemyFindStandalone(e, enemyGroupKey(e), curIdxs || []);
+    const jumpLink = standaloneIdx != null
+      ? `<button type="button" class="gift-link-chip" data-jump-idx="${standaloneIdx}">개별 카드로 보기</button>` : "";
+    rows.push(`<div class="skill-tt-row"><span>소속</span><span>${escapeHTML(groupLabel || "")}${e.phase ? ` (${escapeHTML(e.phase)} 등장)` : ""}${jumpLink}</span></div>`);
   } else {
     if (groupLabel) rows.push(`<div class="skill-tt-row"><span>분류</span><span>${escapeHTML(groupLabel)}</span></div>`);
     if (e.phase) rows.push(`<div class="skill-tt-row"><span>페이즈</span><span>${escapeHTML(e.phase)}</span></div>`);
@@ -5868,18 +5891,28 @@ function enemyDetailBodyHTML(e){
   return rows.join("");
 }
 let enemyDetailState = { idxs: [], round: 0 };
+let enemyDetailHistory = [];
 function renderEnemyDetailBody(){
   const idx = enemyDetailState.idxs[enemyDetailState.round];
   const e = ENEMY_DATA[idx];
-  document.getElementById("enemyDetailBody").innerHTML = enemyDetailBodyHTML(e);
+  const body = document.getElementById("enemyDetailBody");
+  body.innerHTML = enemyDetailBodyHTML(e, enemyDetailState.idxs);
+  const jumpBtn = body.querySelector("[data-jump-idx]");
+  if (jumpBtn){
+    jumpBtn.addEventListener("click", () => {
+      enemyDetailHistory.push({idxs: enemyDetailState.idxs, round: enemyDetailState.round});
+      renderEnemyDetail(enemyGroupIdxsFor(Number(jumpBtn.dataset.jumpIdx)));
+    });
+  }
 }
-function openEnemyDetail(idxs){
+function renderEnemyDetail(idxs, initialRound){
   let list = Array.isArray(idxs) ? idxs : [idxs];
   list = enemySortMainFirst(list.map(idx => ({e: ENEMY_DATA[idx], idx}))).map(it => it.idx);
   const first = ENEMY_DATA[list[0]];
   if (!first) return;
-  enemyDetailState = { idxs: list, round: 0 };
+  enemyDetailState = { idxs: list, round: initialRound || 0 };
   document.getElementById("enemyDetailTitle").textContent = `${enemyDisplayName(first)} (${first.chapter})`;
+  document.getElementById("enemyDetailBack").hidden = enemyDetailHistory.length === 0;
   const roundTabsWrap = document.getElementById("enemyDetailRoundTabs");
   if (list.length > 1){
     roundTabsWrap.hidden = false;
@@ -5887,7 +5920,7 @@ function openEnemyDetail(idxs){
     let labels = all.map(e => enemyTabLabel(e, all));
     if (new Set(labels).size !== labels.length) labels = labels.map((l, i) => `${i+1}차전`);
     roundTabsWrap.innerHTML = list.map((idx, i) =>
-      `<button type="button" class="view-tab" data-round="${i}" aria-pressed="${i===0}">${escapeHTML(labels[i])}</button>`
+      `<button type="button" class="view-tab" data-round="${i}" aria-pressed="${i===enemyDetailState.round}">${escapeHTML(labels[i])}</button>`
     ).join("");
     roundTabsWrap.querySelectorAll("button").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -5903,7 +5936,17 @@ function openEnemyDetail(idxs){
   renderEnemyDetailBody();
   document.getElementById("enemyDetailModal").hidden = false;
 }
-function closeEnemyDetail(){ document.getElementById("enemyDetailModal").hidden = true; }
+function openEnemyDetail(idxs){
+  enemyDetailHistory = [];
+  renderEnemyDetail(idxs);
+}
+function enemyDetailGoBack(){
+  const prev = enemyDetailHistory.pop();
+  if (!prev) return;
+  renderEnemyDetail(prev.idxs, prev.round);
+}
+function closeEnemyDetail(){ document.getElementById("enemyDetailModal").hidden = true; enemyDetailHistory = []; }
+document.getElementById("enemyDetailBack").addEventListener("click", enemyDetailGoBack);
 document.getElementById("enemyDetailClose").addEventListener("click", closeEnemyDetail);
 document.getElementById("enemyDetailBackdrop").addEventListener("click", closeEnemyDetail);
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !document.getElementById("enemyDetailModal").hidden) closeEnemyDetail(); });
