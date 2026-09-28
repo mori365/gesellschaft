@@ -3462,6 +3462,9 @@ function computeMeta(entry){
   const searchFields = [entry.sinner, entry.identity, entry.supportPassiveName, entry.supportPassiveEffect, entry.condition, ...entry.abbrevs];
   entry.searchBlob = searchFields.join(" ").toLowerCase();
   entry.searchBlobNoSpace = searchFields.map(f => f.replace(/\s+/g, "")).join(" ").toLowerCase();
+  const nameFields = [entry.sinner, entry.identity, ...entry.abbrevs];
+  entry.nameBlob = nameFields.join(" ").toLowerCase();
+  entry.nameBlobNoSpace = nameFields.map(f => f.replace(/\s+/g, "")).join(" ").toLowerCase();
 }
 DATA.forEach(computeMeta);
 
@@ -3585,7 +3588,9 @@ function buildRarityChips(){
 function passesFilters(d){
   if (state.q){
     const terms = state.q.toLowerCase().split(/\s+/).filter(Boolean);
-    if (!terms.every(t => d.searchBlob.includes(t) || d.searchBlobNoSpace.includes(t))) return false;
+    const blob = nameOnlySearch ? d.nameBlob : d.searchBlob;
+    const blobNS = nameOnlySearch ? d.nameBlobNoSpace : d.searchBlobNoSpace;
+    if (!terms.every(t => blob.includes(t) || blobNS.includes(t))) return false;
   }
   if (state.sinners.size){
     const inSet = state.sinners.has(d.sinner);
@@ -3613,13 +3618,18 @@ function skillSetSearchParts(d){
   d._skillSetParts = parts;
   d._skillSetBlob = parts.join(" ").toLowerCase();
   d._skillSetBlobNoSpace = parts.map(f => f.replace(/\s+/g, "")).join(" ").toLowerCase();
+  const nameParts = [d.sinner, d.identity, ...d.abbrevs];
+  d._skillSetNameBlob = nameParts.join(" ").toLowerCase();
+  d._skillSetNameBlobNoSpace = nameParts.map(f => f.replace(/\s+/g, "")).join(" ").toLowerCase();
   return parts;
 }
 function skillSetPassesFilters(d){
   if (state.skillSetQ){
     skillSetSearchParts(d);
     const terms = state.skillSetQ.toLowerCase().split(/\s+/).filter(Boolean);
-    if (!terms.every(t => d._skillSetBlob.includes(t) || d._skillSetBlobNoSpace.includes(t))) return false;
+    const blob = nameOnlySearch ? d._skillSetNameBlob : d._skillSetBlob;
+    const blobNS = nameOnlySearch ? d._skillSetNameBlobNoSpace : d._skillSetBlobNoSpace;
+    if (!terms.every(t => blob.includes(t) || blobNS.includes(t))) return false;
   }
   if (state.sinners.size){
     const inSet = state.sinners.has(d.sinner);
@@ -5524,7 +5534,8 @@ function renderGiftKwTabs(){
 }
 function giftMatchesQuery(g, q){
   if (!q) return true;
-  const hay = [g.name, g.effect, g.english, ...(g.aliases || [])].filter(Boolean).join(" ").toLowerCase();
+  const fields = nameOnlySearch ? [g.name, ...(g.aliases || [])] : [g.name, g.effect, g.english, ...(g.aliases || [])];
+  const hay = fields.filter(Boolean).join(" ").toLowerCase();
   return hay.includes(q.toLowerCase());
 }
 function giftCardHTML(g){
@@ -5961,6 +5972,25 @@ document.getElementById("enemyResetAll").addEventListener("click", () => {
   enemyState.mode = "일반";
   renderEnemyView();
 });
+
+/* ---- 이름만 검색 토글 (설정이 아니라 검색창 옆에 노출, 자주 켜고 끌 것으로 예상) ---- */
+let nameOnlySearch = false;
+try { nameOnlySearch = localStorage.getItem("nameOnlySearch") === "1"; } catch(e){}
+const nameOnlyToggles = [...document.querySelectorAll(".nameOnlyToggle")];
+function applyNameOnlySearch(){
+  nameOnlyToggles.forEach(cb => { cb.checked = nameOnlySearch; });
+  try { localStorage.setItem("nameOnlySearch", nameOnlySearch ? "1" : "0"); } catch(e){}
+  if (!document.getElementById("searchView").hidden) render();
+  if (!document.getElementById("skillSetView").hidden) renderSkillSet();
+  if (!document.getElementById("giftView").hidden) renderGiftGrid();
+}
+nameOnlyToggles.forEach(cb => {
+  cb.addEventListener("change", () => {
+    nameOnlySearch = cb.checked;
+    applyNameOnlySearch();
+  });
+});
+applyNameOnlySearch();
 
 showDeckView();
 updateHeaderHeightVar();
