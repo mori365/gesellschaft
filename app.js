@@ -5397,12 +5397,14 @@ document.getElementById("ownedOnlyToggle").addEventListener("change", e => {
 const tabSkillSet = document.getElementById("tabSkillSet");
 const tabGift = document.getElementById("tabGift");
 const tabEnemy = document.getElementById("tabEnemy");
+const tabDealCalc = document.getElementById("tabDealCalc");
 function showSearchView(){
   tabSearch.setAttribute("aria-pressed","true");
   tabDeck.setAttribute("aria-pressed","false");
   tabSkillSet.setAttribute("aria-pressed","false");
   tabGift.setAttribute("aria-pressed","false");
   tabEnemy.setAttribute("aria-pressed","false");
+  tabDealCalc.setAttribute("aria-pressed","false");
   document.getElementById("searchView").hidden = false;
   document.getElementById("searchRow").hidden = false;
   document.getElementById("skillSetSearchRow").hidden = true;
@@ -5412,6 +5414,7 @@ function showSearchView(){
   document.getElementById("skillSetView").hidden = true;
   document.getElementById("giftView").hidden = true;
   document.getElementById("enemyView").hidden = true;
+  document.getElementById("dealCalcView").hidden = true;
   document.getElementById("deckView").hidden = true;
   pickerView.hidden = true;
   ownedView.hidden = true;
@@ -5423,6 +5426,7 @@ function showSkillSetView(){
   tabSkillSet.setAttribute("aria-pressed","true");
   tabGift.setAttribute("aria-pressed","false");
   tabEnemy.setAttribute("aria-pressed","false");
+  tabDealCalc.setAttribute("aria-pressed","false");
   document.getElementById("searchView").hidden = true;
   document.getElementById("searchRow").hidden = true;
   document.getElementById("skillSetSearchRow").hidden = false;
@@ -5432,6 +5436,7 @@ function showSkillSetView(){
   document.getElementById("skillSetView").hidden = false;
   document.getElementById("giftView").hidden = true;
   document.getElementById("enemyView").hidden = true;
+  document.getElementById("dealCalcView").hidden = true;
   document.getElementById("deckView").hidden = true;
   pickerView.hidden = true;
   ownedView.hidden = true;
@@ -5444,6 +5449,7 @@ function showDeckView(){
   tabSkillSet.setAttribute("aria-pressed","false");
   tabGift.setAttribute("aria-pressed","false");
   tabEnemy.setAttribute("aria-pressed","false");
+  tabDealCalc.setAttribute("aria-pressed","false");
   document.getElementById("searchView").hidden = true;
   document.getElementById("searchRow").hidden = true;
   document.getElementById("skillSetSearchRow").hidden = true;
@@ -5453,6 +5459,7 @@ function showDeckView(){
   document.getElementById("skillSetView").hidden = true;
   document.getElementById("giftView").hidden = true;
   document.getElementById("enemyView").hidden = true;
+  document.getElementById("dealCalcView").hidden = true;
   document.getElementById("deckView").hidden = false;
   pickerView.hidden = true;
   ownedView.hidden = true;
@@ -5465,6 +5472,7 @@ function showGiftView(){
   tabSkillSet.setAttribute("aria-pressed","false");
   tabGift.setAttribute("aria-pressed","true");
   tabEnemy.setAttribute("aria-pressed","false");
+  tabDealCalc.setAttribute("aria-pressed","false");
   document.getElementById("searchView").hidden = true;
   document.getElementById("searchRow").hidden = true;
   document.getElementById("skillSetSearchRow").hidden = true;
@@ -5474,6 +5482,7 @@ function showGiftView(){
   document.getElementById("skillSetView").hidden = true;
   document.getElementById("giftView").hidden = false;
   document.getElementById("enemyView").hidden = true;
+  document.getElementById("dealCalcView").hidden = true;
   document.getElementById("deckView").hidden = true;
   pickerView.hidden = true;
   ownedView.hidden = true;
@@ -5486,6 +5495,7 @@ function showEnemyView(){
   tabSkillSet.setAttribute("aria-pressed","false");
   tabGift.setAttribute("aria-pressed","false");
   tabEnemy.setAttribute("aria-pressed","true");
+  tabDealCalc.setAttribute("aria-pressed","false");
   document.getElementById("searchView").hidden = true;
   document.getElementById("searchRow").hidden = true;
   document.getElementById("skillSetSearchRow").hidden = true;
@@ -5495,17 +5505,42 @@ function showEnemyView(){
   document.getElementById("skillSetView").hidden = true;
   document.getElementById("giftView").hidden = true;
   document.getElementById("enemyView").hidden = false;
+  document.getElementById("dealCalcView").hidden = true;
   document.getElementById("deckView").hidden = true;
   pickerView.hidden = true;
   ownedView.hidden = true;
   updateHeaderHeightVar();
   renderEnemyView();
 }
+function showDealCalcView(){
+  tabSearch.setAttribute("aria-pressed","false");
+  tabDeck.setAttribute("aria-pressed","false");
+  tabSkillSet.setAttribute("aria-pressed","false");
+  tabGift.setAttribute("aria-pressed","false");
+  tabEnemy.setAttribute("aria-pressed","false");
+  tabDealCalc.setAttribute("aria-pressed","true");
+  document.getElementById("searchView").hidden = true;
+  document.getElementById("searchRow").hidden = true;
+  document.getElementById("skillSetSearchRow").hidden = true;
+  document.getElementById("giftSearchRow").hidden = true;
+  document.getElementById("enemySearchRow").hidden = true;
+  document.getElementById("searchFooter").hidden = true;
+  document.getElementById("skillSetView").hidden = true;
+  document.getElementById("giftView").hidden = true;
+  document.getElementById("enemyView").hidden = true;
+  document.getElementById("dealCalcView").hidden = false;
+  document.getElementById("deckView").hidden = true;
+  pickerView.hidden = true;
+  ownedView.hidden = true;
+  updateHeaderHeightVar();
+  renderDealCalcView();
+}
 tabSearch.addEventListener("click", showSearchView);
 tabDeck.addEventListener("click", showDeckView);
 tabSkillSet.addEventListener("click", showSkillSetView);
 tabGift.addEventListener("click", showGiftView);
 tabEnemy.addEventListener("click", showEnemyView);
+tabDealCalc.addEventListener("click", showDealCalcView);
 
 /* ---- 에고 기프트 ---- */
 const GIFT_KEYWORDS = ["화상","출혈","진동","파열","침잠","충전","호흡","참격","관통","타격","범용"];
@@ -5972,6 +6007,268 @@ document.getElementById("enemyResetAll").addEventListener("click", () => {
   enemyState.mode = "일반";
   renderEnemyView();
 });
+
+/* ---- 딜뽕 계산기 ----
+   데미지 = 코인위력 × max(1+Ms, 0) × (1+Md)
+   코인위력(전부 앞면) = 기본위력×코인수 + 코인위력×(1+2+...+코인수)  (n번째 코인은 코인위력×n만큼 누적)
+   Ms(정적, 서로 덧셈) = 죄종내성(A) + 속성내성(B, 흐트러짐 시 덮어씀) + 레벨차(C=x/(|x|+25)) + 합 보너스(D=0.03×라운드) + 치명타(E=0.2)
+   Md(동적, 서로 덧셈) = 자신 피해량 증감(G) + 대상 취약·보호(H)
+   출처: blog.limbus.wiki/docs/damage_formula (게임 코드 BattleUnitModel::GiveAttackDamage 기반) — 2026-09-29 조사.
+   기프트/패시브 개별 조건부 효과는 "기타 보정치" 수동 입력으로 반영 (자동 파싱은 순차 확장 예정). */
+const DEALCALC_TIER_MULT = {"약점":2.0, "취약":1.5, "보통":1.0, "견딤":0.75, "내성":0.5};
+function dealcalcA(x){
+  if (x < 0) return -0.5;
+  if (x < 1) return (x - 1) / 2;
+  return x - 1;
+}
+function dealcalcLevelAdv(atk, def){
+  const x = atk - def;
+  return x / (Math.abs(x) + 25);
+}
+function dealcalcTri(n){ return n > 0 ? n * (n + 1) / 2 : 0; }
+// fromIdx~toIdx번째 코인들(1-based)의 위력 합
+function dealcalcCoinRangeTotal(power, coinPower, fromIdx, toIdx){
+  if (toIdx < fromIdx) return 0;
+  const count = toIdx - fromIdx + 1;
+  return power * count + coinPower * (dealcalcTri(toIdx) - dealcalcTri(fromIdx - 1));
+}
+function dealcalcBugMode(){ return document.getElementById("dealCalcBugMode").checked; }
+function dealcalcTierSelectHTML(){
+  const bug = dealcalcBugMode();
+  let html = Object.keys(DEALCALC_TIER_MULT).map(t => `<option value="${t}">${escapeHTML(t)} (${DEALCALC_TIER_MULT[t]}x)</option>`).join("");
+  if (bug) html += `<option value="custom">직접 입력(배율)</option>`;
+  return html;
+}
+function dealcalcRefreshTierSelects(){
+  const sinSel = document.getElementById("dcSinRes");
+  const typeSel = document.getElementById("dcTypeRes");
+  const sinPrev = sinSel.value || "보통";
+  const typePrev = typeSel.value || "보통";
+  sinSel.innerHTML = dealcalcTierSelectHTML();
+  typeSel.innerHTML = dealcalcTierSelectHTML();
+  sinSel.value = [...sinSel.options].some(o => o.value === sinPrev) ? sinPrev : "보통";
+  typeSel.value = [...typeSel.options].some(o => o.value === typePrev) ? typePrev : "보통";
+  dealcalcSyncCustomInputs();
+}
+function dealcalcSyncCustomInputs(){
+  document.getElementById("dcSinResCustom").hidden = document.getElementById("dcSinRes").value !== "custom";
+  document.getElementById("dcTypeResCustom").hidden = document.getElementById("dcTypeRes").value !== "custom";
+}
+function dealcalcTierValue(selectId, customId){
+  const sel = document.getElementById(selectId);
+  if (sel.value === "custom") return Number(document.getElementById(customId).value) || 1;
+  return DEALCALC_TIER_MULT[sel.value] != null ? DEALCALC_TIER_MULT[sel.value] : 1;
+}
+function dealcalcParseLead(str){
+  const m = String(str == null ? "" : str).match(/-?\d+/);
+  return m ? Number(m[0]) : 0;
+}
+function dealcalcSkillSin(sinner, identity, skillKey){
+  const prof = IDENTITY_SKILL_PROFILE[`${sinner}|${identity}`];
+  if (!prof) return null;
+  if (skillKey === "defense") return (prof.defense && prof.defense[0] && prof.defense[0].sin) || null;
+  const idx = {skill1:0, skill2:1, skill3:2}[skillKey];
+  return (prof.skills[idx] && prof.skills[idx].sin) || null;
+}
+function dealcalcSkillOptions(sinner, identity){
+  const detail = IDENTITY_SKILL_DETAIL[`${sinner}|${identity}`];
+  if (!detail) return [];
+  const out = [];
+  (detail.skills || []).forEach((s, i) => {
+    if (s && s.name) out.push({key: `skill${i+1}`, label: `스킬${i+1} · ${s.name}`, power: Number(s.power)||0, coin: dealcalcParseLead(s.coin), coinCount: Number(s.coinCount)||1});
+  });
+  if (detail.defense && detail.defense.name){
+    const d = detail.defense;
+    out.push({key: "defense", label: `수비 · ${d.name}`, power: Number(d.power)||0, coin: dealcalcParseLead(d.coin), coinCount: Number(d.coinCount)||1});
+  }
+  return out;
+}
+function dealcalcPopulateSinners(){
+  const sel = document.getElementById("dcSinner");
+  sel.innerHTML = SINNER_ORDER.map(s => `<option value="${escapeHTML(s)}">${escapeHTML(s)}</option>`).join("");
+}
+function dealcalcPopulateIdentities(){
+  const sinner = document.getElementById("dcSinner").value;
+  const sel = document.getElementById("dcIdentity");
+  const identities = DATA.filter(d => d.sinner === sinner);
+  sel.innerHTML = identities.map(d => `<option value="${escapeHTML(d.identity)}">${escapeHTML(d.identity)}</option>`).join("");
+}
+function dealcalcPopulateSkills(){
+  const sinner = document.getElementById("dcSinner").value;
+  const identity = document.getElementById("dcIdentity").value;
+  const opts = dealcalcSkillOptions(sinner, identity);
+  const sel = document.getElementById("dcSkill");
+  if (!opts.length){
+    sel.innerHTML = `<option value="">(스킬 정보 없음 — 직접 입력)</option>`;
+    return;
+  }
+  sel.innerHTML = opts.map(o => `<option value="${o.key}">${escapeHTML(o.label)}</option>`).join("");
+  dealcalcApplySkillToFields();
+}
+function dealcalcApplySkillToFields(){
+  const sinner = document.getElementById("dcSinner").value;
+  const identity = document.getElementById("dcIdentity").value;
+  const skillKey = document.getElementById("dcSkill").value;
+  const opts = dealcalcSkillOptions(sinner, identity);
+  const found = opts.find(o => o.key === skillKey);
+  if (found){
+    document.getElementById("dcPower").value = found.power;
+    document.getElementById("dcCoinPower").value = found.coin;
+    document.getElementById("dcCoinCount").value = found.coinCount;
+  }
+  const sin = dealcalcSkillSin(sinner, identity, skillKey);
+  document.getElementById("dcGiftHint").textContent = sin
+    ? `이 스킬의 속성: ${sin} (적 선택 시 죄종 내성 자동 반영)`
+    : "";
+  dealcalcApplyEnemyAutofill();
+}
+function dealcalcPopulateAttackType(){
+  const sel = document.getElementById("dcAttackType");
+  sel.innerHTML = `<option value="">(적 속성내성 자동입력용, 선택)</option>` +
+    ATTACK_TYPE_KW.map(t => `<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("");
+}
+function dealcalcPopulateEnemies(){
+  const sel = document.getElementById("dcEnemy");
+  const list = ENEMY_DATA
+    .map((e, idx) => ({e, idx}))
+    .filter(({e}) => e.hp != null)
+    .sort((a, b) => (a.e.chapterNum - b.e.chapterNum) || a.e.name.localeCompare(b.e.name, "ko"));
+  sel.innerHTML = `<option value="">직접 입력</option>` +
+    list.map(({e, idx}) => `<option value="${idx}">${escapeHTML(e.chapter)} · ${escapeHTML(e.name)}</option>`).join("");
+}
+function dealcalcApplyEnemyAutofill(){
+  const idx = document.getElementById("dcEnemy").value;
+  if (idx === "") return;
+  const e = ENEMY_DATA[Number(idx)];
+  if (!e) return;
+  if (e.defense != null) document.getElementById("dcDefLevel").value = dealcalcParseLead(e.defense);
+  const sinner = document.getElementById("dcSinner").value;
+  const identity = document.getElementById("dcIdentity").value;
+  const skillKey = document.getElementById("dcSkill").value;
+  const sin = dealcalcSkillSin(sinner, identity, skillKey);
+  if (sin && e.resistances && e.resistances[sin] && DEALCALC_TIER_MULT[e.resistances[sin]] != null){
+    document.getElementById("dcSinRes").value = e.resistances[sin];
+  }
+  const atype = document.getElementById("dcAttackType").value;
+  if (atype && e.resistances && e.resistances[atype] && DEALCALC_TIER_MULT[e.resistances[atype]] != null){
+    document.getElementById("dcTypeRes").value = e.resistances[atype];
+  }
+  dealcalcSyncCustomInputs();
+}
+function dealcalcScenario(power, coinPower, coinCount, clashRounds, Ms0, Md){
+  const remaining = Math.max(0, coinCount - clashRounds);
+  const coinTotal = dealcalcCoinRangeTotal(power, coinPower, clashRounds + 1, coinCount);
+  const D = clashRounds > 0 ? Math.min(99, clashRounds) * 0.03 : 0;
+  const Ms = Ms0 + D;
+  const msFactor = Math.max(1 + Ms, 0);
+  const mdFactor = 1 + Md;
+  let dmg = coinTotal * msFactor * mdFactor;
+  if (dmg > 0 && dmg < 1) dmg = 1;
+  const floor = coinTotal * 0.05;
+  if (coinTotal > 0 && dmg < floor) dmg = floor;
+  dmg = Math.floor(dmg);
+  return {remaining, coinTotal, D, Ms, Md, msFactor, mdFactor, dmg};
+}
+function renderDealCalcView(){
+  const bug = dealcalcBugMode();
+  document.body.dataset.dealcalcBug = bug ? "1" : "0";
+  document.getElementById("dealCalcModeLabel").textContent = bug ? "버그판" : "크리에이티브";
+  dealcalcRefreshTierSelects();
+
+  const power = Number(document.getElementById("dcPower").value) || 0;
+  const coinPower = Number(document.getElementById("dcCoinPower").value) || 0;
+  const coinCount = Math.max(1, Math.round(Number(document.getElementById("dcCoinCount").value) || 1));
+  const ownedCost = Math.max(0, Number(document.getElementById("dcOwnedCost").value) || 0);
+  const wealthGift = document.getElementById("dcWealthGift").checked;
+  const wealthBonus = wealthGift ? Math.min(20, Math.floor(ownedCost / 500)) : 0;
+  const atkLevel = (Number(document.getElementById("dcAtkLevel").value) || 0) + wealthBonus;
+  const defLevel = Number(document.getElementById("dcDefLevel").value) || 0;
+  const clashRounds = Math.max(0, Math.round(Number(document.getElementById("dcClashRounds").value) || 0));
+  const crit = document.getElementById("dcCrit").checked;
+  const staggerB = Number(document.getElementById("dcStagger").value) || 0;
+
+  const A = dealcalcA(dealcalcTierValue("dcSinRes", "dcSinResCustom"));
+  const typeMult = dealcalcTierValue("dcTypeRes", "dcTypeResCustom");
+  const B = staggerB > 0 ? staggerB : dealcalcA(typeMult);
+  const C = dealcalcLevelAdv(atkLevel, defLevel);
+  const E = crit ? 0.2 : 0;
+  const Ms0 = A + B + C + E;
+
+  let selfPct = Number(document.getElementById("dcSelfDmgPct").value) || 0;
+  let vulnPct = Number(document.getElementById("dcTargetVulnPct").value) || 0;
+  if (!bug){ selfPct = Math.max(-100, Math.min(100, selfPct)); vulnPct = Math.max(-100, Math.min(100, vulnPct)); }
+  const manualMs = Number(document.getElementById("dcManualMs").value) || 0;
+  const manualMd = Number(document.getElementById("dcManualMd").value) || 0;
+  const Md = (selfPct / 100) + (vulnPct / 100) + manualMd;
+
+  const oneSided = dealcalcScenario(power, coinPower, coinCount, 0, Ms0 + manualMs, Md);
+  const clashResult = clashRounds > 0 ? dealcalcScenario(power, coinPower, coinCount, clashRounds, Ms0 + manualMs, Md) : null;
+
+  const higher = clashResult && clashResult.dmg > oneSided.dmg ? "clash" : "one";
+  const rows = [];
+  rows.push(`<div class="dealcalc-scenario-grid">`);
+  rows.push(`<div class="dealcalc-scenario${higher === "one" && clashResult ? " is-higher" : ""}">
+    <div class="dealcalc-scenario-label">일방 공격 (합 없음)</div>
+    <div class="dealcalc-scenario-value">${oneSided.dmg.toLocaleString()}</div>
+  </div>`);
+  if (clashResult){
+    rows.push(`<div class="dealcalc-scenario${higher === "clash" ? " is-higher" : ""}">
+      <div class="dealcalc-scenario-label">합 ${clashRounds}라운드 완승 후</div>
+      <div class="dealcalc-scenario-value">${clashResult.dmg.toLocaleString()}</div>
+    </div>`);
+  } else {
+    rows.push(`<div class="dealcalc-scenario">
+      <div class="dealcalc-scenario-label">합 라운드 수를 입력하면 비교됩니다</div>
+      <div class="dealcalc-scenario-value">—</div>
+    </div>`);
+  }
+  rows.push(`</div>`);
+
+  const shown = clashResult || oneSided;
+  rows.push(`<div class="dealcalc-breakdown">`);
+  rows.push(`<div class="dealcalc-breakdown-row"><span>코인 위력 (일방 기준, 전부 앞면)</span><span>${oneSided.coinTotal.toLocaleString(undefined,{maximumFractionDigits:1})}</span></div>`);
+  if (clashResult) rows.push(`<div class="dealcalc-breakdown-row"><span>코인 위력 (합 완승 후 남는 코인 ${clashResult.remaining}개 기준)</span><span>${clashResult.coinTotal.toLocaleString(undefined,{maximumFractionDigits:1})}</span></div>`);
+  rows.push(`<div class="dealcalc-breakdown-row"><span>A 죄종내성</span><span>${A.toFixed(3)}</span></div>`);
+  rows.push(`<div class="dealcalc-breakdown-row"><span>B 속성내성${staggerB>0?" (흐트러짐 적용)":""}</span><span>${B.toFixed(3)}</span></div>`);
+  rows.push(`<div class="dealcalc-breakdown-row"><span>C 레벨차(공격${atkLevel}${wealthBonus?` = 입력값+부 보너스${wealthBonus}`:""}-방어${defLevel})</span><span>${C.toFixed(3)}</span></div>`);
+  rows.push(`<div class="dealcalc-breakdown-row"><span>D 합 보너스</span><span>${(shown.D||0).toFixed(3)}</span></div>`);
+  rows.push(`<div class="dealcalc-breakdown-row"><span>E 치명타</span><span>${E.toFixed(3)}</span></div>`);
+  rows.push(`<div class="dealcalc-breakdown-row"><span>기타 보정치(Ms)</span><span>${manualMs.toFixed(3)}</span></div>`);
+  rows.push(`<div class="dealcalc-breakdown-row"><span>Ms 합계 → 배율</span><span>${shown.Ms.toFixed(3)} → ×${shown.msFactor.toFixed(3)}</span></div>`);
+  rows.push(`<div class="dealcalc-breakdown-row"><span>G 자신 피해량 증감</span><span>${(selfPct/100).toFixed(3)}</span></div>`);
+  rows.push(`<div class="dealcalc-breakdown-row"><span>H 대상 취약·보호</span><span>${(vulnPct/100).toFixed(3)}</span></div>`);
+  rows.push(`<div class="dealcalc-breakdown-row"><span>기타 보정치(Md)</span><span>${manualMd.toFixed(3)}</span></div>`);
+  rows.push(`<div class="dealcalc-breakdown-row"><span>Md 합계 → 배율</span><span>${Md.toFixed(3)} → ×${shown.mdFactor.toFixed(3)}</span></div>`);
+  rows.push(`</div>`);
+  if (clashRounds >= coinCount){
+    rows.push(`<div class="dealcalc-warn">상대 코인 수가 내 코인 수 이상이면 합에서 이겨도 남는 코인이 없어 데미지가 들어가지 않습니다.</div>`);
+  }
+  if (!bug){
+    rows.push(`<div class="dealcalc-note" style="margin-top:8px;">크리에이티브 모드: 내성 배율은 실제 게임에 존재하는 5단계로 제한되고, 자신 피해량 증감·대상 취약/보호는 ±100%로 제한됩니다. 버그판으로 전환하면 임의 배율·무제한 수치를 입력할 수 있습니다.</div>`);
+  }
+  document.getElementById("dealCalcResult").innerHTML = rows.join("");
+}
+function dealcalcWireInputs(){
+  document.getElementById("dcSinner").addEventListener("change", () => { dealcalcPopulateIdentities(); dealcalcPopulateSkills(); renderDealCalcView(); });
+  document.getElementById("dcIdentity").addEventListener("change", () => { dealcalcPopulateSkills(); renderDealCalcView(); });
+  document.getElementById("dcSkill").addEventListener("change", () => { dealcalcApplySkillToFields(); renderDealCalcView(); });
+  document.getElementById("dcEnemy").addEventListener("change", () => { dealcalcApplyEnemyAutofill(); renderDealCalcView(); });
+  document.getElementById("dcAttackType").addEventListener("change", () => { dealcalcApplyEnemyAutofill(); renderDealCalcView(); });
+  document.getElementById("dealCalcBugMode").addEventListener("change", renderDealCalcView);
+  ["dcPower","dcCoinPower","dcCoinCount","dcAtkLevel","dcCrit","dcClashRounds","dcOwnedCost","dcWealthGift",
+   "dcSelfDmgPct","dcManualMs","dcManualMd","dcDefLevel","dcSinRes","dcSinResCustom","dcTypeRes",
+   "dcTypeResCustom","dcStagger","dcTargetVulnPct"].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener("input", () => { dealcalcSyncCustomInputs(); renderDealCalcView(); });
+    el.addEventListener("change", () => { dealcalcSyncCustomInputs(); renderDealCalcView(); });
+  });
+}
+dealcalcPopulateSinners();
+dealcalcPopulateIdentities();
+dealcalcPopulateSkills();
+dealcalcPopulateAttackType();
+dealcalcPopulateEnemies();
+dealcalcWireInputs();
 
 /* ---- 이름만 검색 토글 (설정이 아니라 검색창 옆에 노출, 자주 켜고 끌 것으로 예상) ---- */
 let nameOnlySearch = false;

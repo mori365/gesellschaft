@@ -644,9 +644,10 @@
 
   /* ---------- deck builder ---------- */
   .deck-layout{ max-width:1180px; margin:0 auto; padding:22px 24px 60px; display:flex; flex-direction:column; gap:22px; }
-  #searchView[hidden], #deckView[hidden], #skillSetView[hidden], #giftView[hidden], #enemyView[hidden], .search-row[hidden], footer.note[hidden]{ display:none !important; }
+  #searchView[hidden], #deckView[hidden], #skillSetView[hidden], #giftView[hidden], #enemyView[hidden], #dealCalcView[hidden], .search-row[hidden], footer.note[hidden]{ display:none !important; }
   .gift-layout{ display:block; }
   .enemy-layout{ display:block; }
+  .dealcalc-layout{ display:block; }
 
   /* ---------- 스킬셋 ---------- */
   .skillset-skill-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
@@ -971,3 +972,55 @@
     font-size:10.5px; font-weight:700; text-align:center; padding:2px 0;
   }
   .picker-empty{ padding:60px 10px; text-align:center; color:var(--text-muted); font-size:13px; }
+
+  /* ---------- 딜뽕 계산기 ---------- */
+  .dealcalc-header{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
+    margin-bottom:18px; flex-wrap:wrap;
+  }
+  .dealcalc-title{ font-size:20px; font-weight:700; margin:0 0 6px; }
+  .dealcalc-hint{ font-size:12.5px; color:var(--text-muted); max-width:640px; margin:0; line-height:1.6; }
+  .dealcalc-mode-toggle{ flex:none; font-size:13px; font-weight:700; }
+  .dealcalc-mode-toggle .toggle-track{ width:38px; height:21px; }
+  .dealcalc-mode-toggle .toggle-track::after{ width:17px; height:17px; }
+  body[data-dealcalc-bug="1"] .dealcalc-mode-toggle{ color:var(--sin-wrath); }
+  .dealcalc-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:20px;
+    align-items:start;
+  }
+  @media (max-width:860px){ .dealcalc-grid{ grid-template-columns:1fr; } }
+  .dealcalc-col{
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:16px; display:flex; flex-direction:column; gap:10px;
+  }
+  .dealcalc-col h3{ margin:0 0 4px; font-size:14px; color:var(--text-muted); }
+  .dealcalc-row{ display:flex; align-items:center; gap:10px; }
+  .dealcalc-row label{ flex:0 0 150px; font-size:13px; color:var(--text-muted); }
+  .dealcalc-row select, .dealcalc-row input[type="number"]{
+    flex:1; min-width:0; background:var(--surface-2); border:1px solid var(--border-strong);
+    border-radius:7px; padding:7px 10px; color:var(--text); font-size:13.5px; font-family:inherit;
+  }
+  .dealcalc-row input[type="checkbox"]{ flex:none; width:18px; height:18px; accent-color:var(--accent); }
+  .dealcalc-row-3{ flex-wrap:wrap; }
+  .dealcalc-row-3 label{ flex:0 0 auto; }
+  .dealcalc-row-3 input{ flex:1 1 60px; min-width:60px; }
+  .dealcalc-note{ font-size:11.5px; color:var(--text-faint); line-height:1.6; }
+  .dealcalc-result{
+    margin-top:20px; background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:18px 20px;
+  }
+  .dealcalc-scenario-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  @media (max-width:860px){ .dealcalc-scenario-grid{ grid-template-columns:1fr; } }
+  .dealcalc-scenario{
+    background:var(--surface-2); border:1px solid var(--border-strong); border-radius:9px; padding:14px 16px;
+  }
+  .dealcalc-scenario.is-higher{ border-color:var(--accent); }
+  .dealcalc-scenario-label{ font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:4px; }
+  .dealcalc-scenario-value{ font-family:"IBM Plex Mono",monospace; font-size:26px; font-weight:700; color:var(--accent-strong); }
+  .dealcalc-breakdown{ font-size:12px; color:var(--text-muted); margin-top:16px; }
+  .dealcalc-breakdown-row{
+    display:flex; justify-content:space-between; gap:10px; padding:4px 0;
+    border-bottom:1px dashed var(--border);
+  }
+  .dealcalc-breakdown-row span:last-child{ font-family:"IBM Plex Mono",monospace; color:var(--text); }
+  .dealcalc-warn{ color:var(--sin-wrath); font-size:12px; margin-top:10px; }
