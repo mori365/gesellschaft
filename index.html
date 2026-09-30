@@ -306,9 +306,22 @@
 
         <h4 class="dealcalc-subhead">자신 키워드 스택</h4>
         <div class="dealcalc-kw-grid" id="dcSelfKwGrid"></div>
+        <div class="dealcalc-kw-add-row">
+          <input type="text" id="dcKwAddInput" list="dcKwOptions" placeholder="추가할 키워드 검색 (예: 신속, 속박, 취약...)">
+          <datalist id="dcKwOptions"></datalist>
+          <button type="button" id="dcKwAddBtn">+ 추가</button>
+        </div>
 
         <details class="dealcalc-advanced">
-          <summary>기타 보정치 (기프트·패시브 등 수동 반영)</summary>
+          <summary>기타 보정치 (조건부 코인 수·가중치, 기프트·패시브 등 수동 반영)</summary>
+          <div class="dealcalc-row">
+            <label title="예: 거미집의 검 료슈 '공간참 - 잔'처럼 조건부로 코인이 재사용/추가되는 스킬을 반영할 때 사용">코인 수 보정(+/-)</label>
+            <input type="number" id="dcCoinCountAdj" value="0" step="1">
+          </div>
+          <div class="dealcalc-row">
+            <label title="여러 대상에게 동시에 적용되는 공격의 가중치, 조건부 재발동 등으로 전체 피해량 자체를 배수 조정할 때 사용 (기본 1)">피해량 배수(가중치·재발동)</label>
+            <input type="number" id="dcDamageMult" value="1" step="0.05" min="0">
+          </div>
           <div class="dealcalc-row">
             <label title="자동 반영: 체크 시 보유 코스트 500당 전원 공격 레벨 +1 (최대 20)을 공격 레벨에 더해서 계산">'부' 기프트 장착</label>
             <input type="checkbox" id="dcWealthGift">
