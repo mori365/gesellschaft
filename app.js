@@ -6210,6 +6210,7 @@ function dealcalcSelectIdentity(identity){
   dealcalcRenderIdentityGrid();
   dealcalcRenderSkillBar();
   dealcalcRenderSkillDetail();
+  dealcalcRenderSelfKwGrid();
   renderDealCalcView();
 }
 function dealcalcRenderSinnerSwitch(){
@@ -6229,6 +6230,7 @@ function dealcalcRenderSinnerSwitch(){
       dealcalcRenderIdentityGrid();
       dealcalcRenderSkillBar();
       dealcalcRenderSkillDetail();
+      dealcalcRenderSelfKwGrid();
       renderDealCalcView();
     });
   });
@@ -6238,15 +6240,55 @@ function dealcalcPopulateKwDatalist(){
   dl.innerHTML = Object.keys(KEYWORD_ICON_DATA).sort((a, b) => a.localeCompare(b, "ko"))
     .map(kw => `<option value="${escapeHTML(kw)}"></option>`).join("");
 }
+// 텍스트에서 실제 게임 키워드 이름을 찾아낸다 (linkifyKeywords와 동일한 KEYWORD_RE 재사용 —
+// 한 글자짜리 키워드 제외, "광신도"/"소수점 버림" 같은 오탐 방지 규칙도 그대로 적용됨).
+function dealcalcScanKeywords(text){
+  const matches = String(text || "").match(KEYWORD_RE);
+  return matches ? [...new Set(matches)] : [];
+}
+// 거의 모든 인격 스킬 텍스트에 등장하는 범용 게임 용어(개별 캐릭터 고유 스택이 아님) — 자동
+// 추가 대상에서 제외. 실제 "누적 스택"으로 관리되는 키워드가 아니라 코인 속성·상태 트리거이므로.
+const DEALCALC_AUTO_KW_EXCLUDE = new Set(["파괴 불가 코인","크리티컬","흐트러짐","행동 불가","패닉","공격 레벨","방어 레벨","합 위력","코인 위력"]);
+// 현재 선택된 인격의 전체 스킬(기본+강화)·패시브, 그리고 장착한 에고 기프트(선택된 강화 단계)
+// 텍스트를 모두 훑어서 전용 키워드를 자동으로 찾아낸다. 스킬 선택과 무관하게 "인격 자체가
+// 가진" 키워드 전부를 잡기 위해 선택된 스킬 하나가 아니라 인격의 전체 스킬셋을 스캔한다.
+function dealcalcComputeAutoKw(){
+  const sinner = dealcalcState.sinner, identity = dealcalcState.identity;
+  if (!sinner || !identity) return [];
+  const texts = [];
+  dealcalcBuildSkillOptions(sinner, identity).forEach(o => {
+    texts.push(o.name);
+    if (o.coinEffects) Object.values(o.coinEffects).forEach(t => texts.push(t));
+  });
+  (IDENTITY_PASSIVE[`${sinner}|${identity}`] || []).forEach(p => texts.push(p.effect));
+  dealcalcState.equippedGifts.forEach(name => {
+    const g = EGO_GIFT_DATA.find(x => x.name === name);
+    if (!g) return;
+    const tiers = dealcalcGiftEffectTiers(g.effect);
+    const storedTier = dealcalcState.giftTier[name];
+    const tierIdx = Math.min(storedTier != null ? storedTier : tiers.length - 1, tiers.length - 1);
+    texts.push(tiers[tierIdx].text);
+  });
+  return dealcalcScanKeywords(texts.join("\n")).filter(k => !DEALCALC_SELF_KEYWORDS.includes(k) && !DEALCALC_AUTO_KW_EXCLUDE.has(k));
+}
 function dealcalcRenderSelfKwGrid(){
   const grid = document.getElementById("dcSelfKwGrid");
-  const keys = DEALCALC_SELF_KEYWORDS.concat(dealcalcState.extraKw);
+  const autoKw = dealcalcComputeAutoKw();
+  const extraOnly = dealcalcState.extraKw.filter(k => !autoKw.includes(k));
+  const keys = DEALCALC_SELF_KEYWORDS.concat(autoKw, extraOnly);
+  // 더 이상 기본/자동/수동 목록 어디에도 없는 키워드의 저장값은 정리
+  const keySet = new Set(keys);
+  Object.keys(dealcalcState.selfKw).forEach(k => { if (!keySet.has(k)) delete dealcalcState.selfKw[k]; });
   grid.innerHTML = keys.map(kw => {
-    const removable = !DEALCALC_SELF_KEYWORDS.includes(kw);
+    const isAuto = autoKw.includes(kw);
+    const removable = !DEALCALC_SELF_KEYWORDS.includes(kw) && !isAuto;
     const val = dealcalcState.selfKw[kw] || 0;
-    return `<label class="dealcalc-kw-item" title="${escapeHTML(kw)} 스택 (참고용 — 데미지 반영은 기타 보정치에 수동 계산)">
+    const title = isAuto
+      ? `${kw} — 현재 인격/기프트 구성에서 자동 감지된 전용 키워드입니다`
+      : `${kw} 스택 (참고용 — 데미지 반영은 기타 보정치에 수동 계산)`;
+    return `<label class="dealcalc-kw-item${isAuto ? " is-auto" : ""}" title="${escapeHTML(title)}">
       ${KEYWORD_ICON_DATA[kw] ? `<img src="${KEYWORD_ICON_DATA[kw]}" alt="">` : ""}
-      <span>${escapeHTML(kw)}</span>
+      <span>${escapeHTML(kw)}${isAuto ? `<span class="dealcalc-kw-auto-tag">자동</span>` : ""}</span>
       <input type="number" min="0" step="1" value="${val}" data-kw="${escapeHTML(kw)}">
       ${removable ? `<button type="button" class="dealcalc-kw-remove" data-remove="${escapeHTML(kw)}" title="제거">✕</button>` : ""}
     </label>`;
@@ -6269,7 +6311,7 @@ function dealcalcAddKw(){
   const input = document.getElementById("dcKwAddInput");
   const kw = input.value.trim();
   if (!kw) return;
-  if (!DEALCALC_SELF_KEYWORDS.includes(kw) && !dealcalcState.extraKw.includes(kw)){
+  if (!DEALCALC_SELF_KEYWORDS.includes(kw) && !dealcalcState.extraKw.includes(kw) && !dealcalcComputeAutoKw().includes(kw)){
     dealcalcState.extraKw.push(kw);
   }
   dealcalcState.selfKw[kw] = dealcalcState.selfKw[kw] || 1;
@@ -6342,6 +6384,7 @@ function dealcalcRenderGiftSearch(){
       document.getElementById("dcGiftSearch").value = "";
       dealcalcRenderGiftSearch();
       dealcalcRenderGiftEquipped();
+      dealcalcRenderSelfKwGrid();
       renderDealCalcView();
     });
   });
@@ -6380,6 +6423,7 @@ function dealcalcRenderGiftEquipped(){
       delete dealcalcState.giftTier[name];
       dealcalcRenderGiftEquipped();
       dealcalcRenderGiftSearch();
+      dealcalcRenderSelfKwGrid();
       renderDealCalcView();
     });
   });
@@ -6387,6 +6431,7 @@ function dealcalcRenderGiftEquipped(){
     sel.addEventListener("change", () => {
       dealcalcState.giftTier[sel.dataset.giftTier] = Number(sel.value);
       dealcalcRenderGiftEquipped();
+      dealcalcRenderSelfKwGrid();
     });
   });
 }
