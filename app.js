@@ -6045,7 +6045,11 @@ document.getElementById("enemyResetAll").addEventListener("click", () => {
    기본위력·코인위력·코인수·공격레벨은 인격/레벨 선택에서 항상 파생시키며 사용자가 직접 입력하지 않는다. */
 const DEALCALC_TIER_MULT = {"약점":2.0, "취약":1.5, "보통":1.0, "견딤":0.75, "내성":0.5};
 const DEALCALC_SELF_KEYWORDS = ["화상","출혈","진동","파열","침잠","충전","호흡"];
-const dealcalcState = { sinner: null, identity: null, selId: null, skillOpts: [], enemyIdxs: new Set(), selfKw: {}, extraKw: [], targetKw: {}, targetExtraKw: [], equippedGifts: [], giftTier: {} };
+const dealcalcState = {
+  sinner: null, identity: null, selId: null, skillOpts: [],
+  party: {}, active: null, memberSettings: {},
+  enemyIdxs: new Set(), selfKw: {}, extraKw: [], targetKw: {}, targetExtraKw: [], equippedGifts: [], giftTier: {},
+};
 // 기프트 effect 텍스트를 "기본 효과/+/++" 단계로 분리 (없으면 단일 단계로 취급)
 function dealcalcGiftEffectTiers(effectText){
   const lines = String(effectText || "").split("\n");
@@ -6065,6 +6069,37 @@ function dealcalcGiftEffectTiers(effectText){
   return tiers.map(t => ({label: t.label, text: t.text.join("\n")}));
 }
 function dealcalcHasWealthGift(){ return dealcalcState.equippedGifts.includes("부"); }
+// 합성 기프트 규칙(크리에이티브): 재료로 쓴 기프트는 다시 얻을 수 없으므로 완성품과 재료를
+// 동시에 가질 수 없고, 재료가 겹치는 두 합성 기프트도 함께 만들 수 없다. 합성 재료가 또 합성품이면
+// 그 재료까지 연쇄적으로 소모된 것으로 본다. 단, 달의 기억의 재료는 다시 획득 가능하므로 예외.
+const DEALCALC_GIFT_BY_NAME = new Map(EGO_GIFT_DATA.map(g => [g.name, g]));
+const DEALCALC_REACQUIRABLE_RECIPES = new Set(["달의 기억"]);
+const dealcalcConsumedCache = new Map();
+function dealcalcGiftConsumed(name, depth = 0){
+  if (dealcalcConsumedCache.has(name)) return dealcalcConsumedCache.get(name);
+  const out = new Set();
+  const g = DEALCALC_GIFT_BY_NAME.get(name);
+  if (g && g.recipe && !DEALCALC_REACQUIRABLE_RECIPES.has(name) && depth < 8){
+    g.recipe.forEach(i => {
+      out.add(i);
+      dealcalcGiftConsumed(i, depth + 1).forEach(x => out.add(x));
+    });
+  }
+  dealcalcConsumedCache.set(name, out);
+  return out;
+}
+function dealcalcGiftConflictReason(name, equipped){
+  const mine = dealcalcGiftConsumed(name);
+  for (const other of equipped){
+    if (other === name) continue;
+    const theirs = dealcalcGiftConsumed(other);
+    if (theirs.has(name)) return `'${other}' 제작에 재료로 소모되어 다시 얻을 수 없음`;
+    if (mine.has(other)) return `만들 때 '${other}'를 재료로 소모함`;
+    const shared = [...mine].find(x => theirs.has(x));
+    if (shared) return `'${other}' 기프트와 재료('${shared}')가 겹쳐 함께 만들 수 없음`;
+  }
+  return null;
+}
 function dealcalcA(x){
   if (x < 0) return -0.5;
   if (x < 1) return (x - 1) / 2;
@@ -6158,45 +6193,209 @@ function dealcalcBuildSkillOptions(sinner, identity){
   });
   return out;
 }
-function dealcalcSelectedOption(){
-  return (dealcalcState.skillOpts || []).find(o => o.id === dealcalcState.selId) || null;
+const DEALCALC_EGO_GRADE_ORDER = ["ZAYIN","TETH","HE","WAW","ALEPH"];
+const DEALCALC_MAX_SLOTS = 3;
+function dealcalcBuildEgoOptions(sinner){
+  const out = [];
+  Object.keys(EGO_DATA)
+    .filter(slug => EGO_DATA[slug].sinner === sinner && EGO_SKILL_DETAIL[slug])
+    .sort((a, b) => DEALCALC_EGO_GRADE_ORDER.indexOf(EGO_DATA[a].grade) - DEALCALC_EGO_GRADE_ORDER.indexOf(EGO_DATA[b].grade))
+    .forEach(slug => {
+      const meta = EGO_DATA[slug];
+      const det = EGO_SKILL_DETAIL[slug];
+      const egoName = meta.title.endsWith(` ${sinner}`) ? meta.title.slice(0, -(sinner.length + 1)) : meta.title;
+      [["awakening", "각성"], ["corrosion", "침식"]].forEach(([k, lbl]) => {
+        const s = det[k];
+        if (!s) return;
+        // E.G.O 데이터는 효과가 있는 코인만 번호로 기록되어 있어, 가장 큰 코인 번호를 코인 수로 본다
+        const keys = s.coinEffects ? Object.keys(s.coinEffects).map(Number).filter(n => n > 0) : [];
+        out.push({
+          id: `ego|${slug}|${k}`, slotKey: "ego", tag: `E.G.O ${lbl} · ${meta.grade}`, kind: "ego",
+          name: k === "corrosion" ? `${egoName} (침식)` : egoName, sin: s.sin,
+          power: dealcalcParseLead(s.power), coin: dealcalcParseLead(s.coin),
+          coinCount: Math.max(1, ...keys),
+          coinEffects: s.coinEffects || null, dealsDamage: true,
+        });
+      });
+    });
+  return out;
 }
-function dealcalcSyncTier(){ return Number(document.getElementById("dcSync").value) || 4; }
-// 3스킬·강화(EGO 부식) 스킬은 관례상 동기화 3단계부터 해금됨 — 인격별 정확한 해금 단계 데이터는
-// 없어 슬롯 가용 여부만 이렇게 근사한다. 위력·코인 수치 자체는 항상 4단계 기준 데이터로 표시.
+function dealcalcSettings(sinner){
+  if (!dealcalcState.memberSettings[sinner]) dealcalcState.memberSettings[sinner] = {level: 60, sync: 4};
+  return dealcalcState.memberSettings[sinner];
+}
+// 3스킬·강화(EGO 부식) 스킬은 동기화 3단계부터 해금 — 인격 스킬 수치 자체는 현재 4단계 데이터 기준.
+function dealcalcSlotOptions(sinner, identity){
+  const tier = dealcalcSettings(sinner).sync;
+  const base = dealcalcBuildSkillOptions(sinner, identity);
+  const gated = tier >= 3 ? base : base.filter(o => o.slotKey !== "skill3" && o.kind !== "special");
+  return gated.concat(dealcalcBuildEgoOptions(sinner));
+}
+function dealcalcMember(sinner){ return dealcalcState.party[sinner] || null; }
+function dealcalcPartySinners(){ return SINNER_ORDER.filter(sn => dealcalcState.party[sn]); }
+// 편성 멤버의 슬롯 중 현재 인격/동기화에서 쓸 수 없게 된 선택은 첫 번째 선택지로 되돌린다
+function dealcalcNormalizeSlots(sinner){
+  const m = dealcalcMember(sinner);
+  if (!m) return;
+  const opts = dealcalcSlotOptions(sinner, m.identity);
+  m.slots = m.slots.map(id => opts.some(o => o.id === id) ? id : (opts[0] ? opts[0].id : null));
+}
+function dealcalcActiveMember(){
+  const a = dealcalcState.active;
+  return a ? dealcalcMember(a.sinner) : null;
+}
+// "편집 중"(dealcalcState.sinner/identity: 수감자 스위치·인격 그리드·스킬 바가 가리키는 대상)과
+// "분석 중"(dealcalcState.active: 데미지를 계산할 슬롯)은 분리된다. 편성 안 된 수감자를 둘러보는
+// 동안에도 분석 중인 슬롯은 그대로 유지된다.
+function dealcalcSyncSkillOpts(){
+  dealcalcState.skillOpts = dealcalcSlotOptions(dealcalcState.sinner, dealcalcState.identity);
+  const a = dealcalcState.active, m = dealcalcActiveMember();
+  dealcalcState.selId = (a && m && a.sinner === dealcalcState.sinner) ? (m.slots[a.idx] || null) : null;
+}
+function dealcalcSelectedOption(){
+  const a = dealcalcState.active, m = dealcalcActiveMember();
+  if (!a || !m) return null;
+  const id = m.slots[a.idx];
+  return dealcalcSlotOptions(a.sinner, m.identity).find(o => o.id === id) || null;
+}
+// 데미지를 계산하는 공격자(분석 중 슬롯의 인격). 슬롯이 없으면 편집 중인 인격으로 대신한다.
+function dealcalcAttacker(){
+  const a = dealcalcState.active, m = dealcalcActiveMember();
+  return (a && m) ? {sinner: a.sinner, identity: m.identity} : {sinner: dealcalcState.sinner, identity: dealcalcState.identity};
+}
+function dealcalcEgoUsedElsewhere(sinner, exceptIdx){
+  const m = dealcalcMember(sinner);
+  return !!(m && m.slots.some((id, i) => i !== exceptIdx && id && id.startsWith("ego|")));
+}
+function dealcalcRefreshAll(){
+  dealcalcSyncSkillOpts();
+  dealcalcRenderSinnerSwitch();
+  dealcalcRenderIdentityGrid();
+  dealcalcRenderSlotCount();
+  dealcalcRenderSlotBar();
+  dealcalcRenderSkillBar();
+  dealcalcRenderSkillDetail();
+  dealcalcRenderMemberSettings();
+  dealcalcRenderSelfKwGrid();
+  dealcalcRenderTargetKwGrid();
+  renderDealCalcView();
+}
+function dealcalcRenderMemberSettings(){
+  const st = dealcalcSettings(dealcalcState.sinner);
+  document.getElementById("dcLevel").value = st.level;
+  document.getElementById("dcSync").value = String(st.sync);
+}
+function dealcalcSetSlotCount(sinner, n){
+  n = Math.max(0, Math.min(DEALCALC_MAX_SLOTS, n));
+  if (n === 0){
+    delete dealcalcState.party[sinner];
+    if (dealcalcState.active && dealcalcState.active.sinner === sinner){
+      const first = dealcalcPartySinners()[0];
+      dealcalcState.active = first ? {sinner: first, idx: 0} : null;
+    }
+    return;
+  }
+  let m = dealcalcMember(sinner);
+  if (!m) m = dealcalcState.party[sinner] = {identity: dealcalcState.identity, slots: []};
+  const prev = m.slots.length;
+  const opts = dealcalcSlotOptions(sinner, m.identity);
+  while (m.slots.length < n) m.slots.push(opts[0] ? opts[0].id : null);
+  m.slots.length = n;
+  const a = dealcalcState.active;
+  // 슬롯을 늘리면 새로 생긴 슬롯을 바로 편집할 수 있게 활성화
+  if (n > prev || !a || a.sinner !== sinner || a.idx >= n) dealcalcState.active = {sinner, idx: n - 1};
+}
+function dealcalcRenderSlotCount(){
+  const box = document.getElementById("dcSlotCount");
+  const m = dealcalcMember(dealcalcState.sinner);
+  const n = m ? m.slots.length : 0;
+  box.innerHTML = `<span class="dealcalc-slotcount-label">${escapeHTML(dealcalcState.sinner)} 슬롯 수</span>
+    <button type="button" class="skill-count-btn" data-slot-delta="-1"${n <= 0 ? " disabled" : ""}>−</button>
+    <span class="skill-count-value">${n}</span>
+    <button type="button" class="skill-count-btn" data-slot-delta="1"${n >= DEALCALC_MAX_SLOTS ? " disabled" : ""}>+</button>
+    ${n === 0 ? `<span class="dealcalc-note">편성 안 됨 — 아래 스킬을 누르면 슬롯 1개로 편성됩니다</span>` : ""}`;
+  box.querySelectorAll("[data-slot-delta]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      dealcalcSetSlotCount(dealcalcState.sinner, n + Number(btn.dataset.slotDelta));
+      dealcalcRefreshAll();
+    });
+  });
+}
+function dealcalcRenderSlotBar(){
+  const bar = document.getElementById("dcSlotBar");
+  const sinners = dealcalcPartySinners();
+  if (!sinners.length){
+    bar.innerHTML = `<span class="dealcalc-note">편성된 슬롯이 없습니다. 아래에서 수감자·인격을 고르고 슬롯 수를 늘리거나 스킬을 눌러 편성하세요.</span>`;
+    return;
+  }
+  const a = dealcalcState.active;
+  bar.innerHTML = sinners.map(sn => {
+    const m = dealcalcMember(sn);
+    const opts = dealcalcSlotOptions(sn, m.identity);
+    return m.slots.map((id, i) => {
+      const o = opts.find(x => x.id === id);
+      const isActive = a && a.sinner === sn && a.idx === i;
+      const sinIcon = o && o.sin ? (SIN_ICON_DATA[o.sin] || "") : "";
+      return `<button type="button" class="dealcalc-turn-slot${isActive ? " is-active" : ""}${o && o.kind === "ego" ? " is-ego" : ""}" data-slot-sinner="${escapeHTML(sn)}" data-slot-idx="${i}" title="${escapeHTML(`${sn} · ${m.identity}`)}">
+        <img class="dealcalc-turn-slot-face" src="${SINNER_ICON_DATA[sn] || ""}" alt="">
+        <span class="dealcalc-turn-slot-text">
+          <span class="dealcalc-turn-slot-tag">${escapeHTML(sn)}${m.slots.length > 1 ? ` ${i + 1}` : ""}</span>
+          <span class="dealcalc-turn-slot-name">${sinIcon ? `<img src="${sinIcon}" alt="">` : ""}${escapeHTML(o ? o.name : "미지정")}</span>
+        </span>
+      </button>`;
+    }).join("");
+  }).join("");
+  bar.querySelectorAll("[data-slot-sinner]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const sn = btn.dataset.slotSinner;
+      dealcalcState.active = {sinner: sn, idx: Number(btn.dataset.slotIdx)};
+      dealcalcState.sinner = sn;
+      dealcalcState.identity = dealcalcMember(sn).identity;
+      dealcalcRefreshAll();
+    });
+  });
+}
 function dealcalcRenderSkillBar(){
-  const allOpts = dealcalcBuildSkillOptions(dealcalcState.sinner, dealcalcState.identity);
-  const tier = dealcalcSyncTier();
-  const opts = tier >= 3 ? allOpts : allOpts.filter(o => o.slotKey !== "skill3" && o.kind !== "special");
-  dealcalcState.skillOpts = opts;
+  const opts = dealcalcState.skillOpts || [];
   const bar = document.getElementById("dcSkillBar");
   if (!opts.length){
     bar.innerHTML = `<span class="dealcalc-note">스킬 정보 없음</span>`;
-    dealcalcState.selId = null;
     return;
   }
-  if (!opts.some(o => o.id === dealcalcState.selId)) dealcalcState.selId = opts[0].id;
-  bar.innerHTML = opts.map(o => `
-    <button type="button" class="dealcalc-skill-slot${o.id === dealcalcState.selId ? " is-current" : ""}" data-id="${escapeHTML(o.id)}">
+  const a = dealcalcState.active;
+  const editingActive = a && a.sinner === dealcalcState.sinner;
+  const bug = dealcalcBugMode();
+  bar.innerHTML = opts.map(o => {
+    const egoBlocked = !bug && o.kind === "ego" && dealcalcEgoUsedElsewhere(dealcalcState.sinner, editingActive ? a.idx : -1);
+    return `<button type="button" class="dealcalc-skill-slot${editingActive && o.id === dealcalcState.selId ? " is-current" : ""}${o.kind === "ego" ? " is-ego" : ""}" data-id="${escapeHTML(o.id)}"${egoBlocked ? ` disabled title="한 턴에 한 수감자는 E.G.O를 한 번만 사용할 수 있습니다"` : ""}>
       <span class="dealcalc-skill-slot-tag">${escapeHTML(o.tag)}</span>
       <span class="dealcalc-skill-slot-name">${escapeHTML(o.name)}</span>
-    </button>`).join("");
-  bar.querySelectorAll("[data-id]").forEach(btn => {
+    </button>`;
+  }).join("");
+  bar.querySelectorAll("[data-id]:not([disabled])").forEach(btn => {
     btn.addEventListener("click", () => {
-      dealcalcState.selId = btn.dataset.id;
-      dealcalcRenderSkillBar();
-      dealcalcRenderSkillDetail();
-      dealcalcRenderTargetKwGrid();
-      renderDealCalcView();
+      const sn = dealcalcState.sinner;
+      let m = dealcalcMember(sn);
+      if (!m){
+        dealcalcSetSlotCount(sn, 1);
+        m = dealcalcMember(sn);
+      }
+      const act = dealcalcState.active;
+      const idx = act && act.sinner === sn ? act.idx : 0;
+      m.slots[idx] = btn.dataset.id;
+      dealcalcState.active = {sinner: sn, idx};
+      dealcalcRefreshAll();
     });
   });
 }
 function dealcalcRenderSkillDetail(){
   const box = document.getElementById("dcSkillDetail");
   const o = dealcalcSelectedOption();
-  if (!o){ box.innerHTML = `<span class="dealcalc-note">스킬을 선택하세요</span>`; return; }
+  if (!o){ box.innerHTML = `<span class="dealcalc-note">분석할 슬롯을 선택하세요</span>`; return; }
+  const a = dealcalcState.active, m = dealcalcActiveMember();
   const sinIcon = o.sin ? (SIN_ICON_DATA[o.sin] || "") : "";
   const rows = [];
+  rows.push(`<div class="dealcalc-note">분석 중: ${escapeHTML(a.sinner)}${m.slots.length > 1 ? ` 슬롯 ${a.idx + 1}` : ""} · ${escapeHTML(m.identity)} (Lv.${dealcalcSettings(a.sinner).level} · 동기화 ${dealcalcSettings(a.sinner).sync})</div>`);
   rows.push(`<div class="dealcalc-skill-detail-head">${sinIcon ? `<img src="${sinIcon}" width="16" height="16" alt="">` : ""}${escapeHTML(o.name)}${o.refNote ? ` <span class="dealcalc-note">(${escapeHTML(o.refNote)})</span>` : ""}</div>`);
   if (o.slotKey === "defense" && !o.dealsDamage){
     rows.push(`<div class="dealcalc-warn">가드/회피 계열 수비 스킬로 추정되어 데미지를 계산하지 않습니다 (반격형 수비만 데미지 계산).</div>`);
@@ -6221,37 +6420,38 @@ function dealcalcRenderIdentityGrid(){
     btn.addEventListener("click", () => dealcalcSelectIdentity(btn.dataset.identity));
   });
 }
+// 인격을 바꾸면 편성 멤버의 인격도 바뀐다 (한 수감자는 편성에 인격 하나만). 슬롯 선택은 새 인격에도
+// 같은 슬롯(스킬1/2/3/수비/E.G.O)이 있으면 유지, 없으면 첫 번째 선택지로 되돌린다.
 function dealcalcSelectIdentity(identity){
   if (identity === dealcalcState.identity) return;
   dealcalcState.identity = identity;
-  dealcalcState.selId = null;
-  dealcalcRenderIdentityGrid();
-  dealcalcRenderSkillBar();
-  dealcalcRenderSkillDetail();
-  dealcalcRenderSelfKwGrid();
-  dealcalcRenderTargetKwGrid();
-  renderDealCalcView();
+  const m = dealcalcMember(dealcalcState.sinner);
+  if (m){
+    m.identity = identity;
+    dealcalcNormalizeSlots(dealcalcState.sinner);
+  }
+  dealcalcRefreshAll();
 }
 function dealcalcRenderSinnerSwitch(){
   const wrap = document.getElementById("dcSinnerSwitch");
   wrap.innerHTML = SINNER_ORDER.map(sn => `
-    <button type="button" class="picker-sinner-btn${sn === dealcalcState.sinner ? " is-current" : ""}" data-sinner="${escapeHTML(sn)}" title="${escapeHTML(sn)}">
+    <button type="button" class="picker-sinner-btn${sn === dealcalcState.sinner ? " is-current" : ""}${dealcalcMember(sn) ? " is-in-party" : ""}" data-sinner="${escapeHTML(sn)}" title="${escapeHTML(sn)}${dealcalcMember(sn) ? " (편성됨)" : ""}">
       <img src="${SINNER_ICON_DATA[sn] || ""}" alt="${escapeHTML(sn)}" loading="lazy">
     </button>`).join("");
   wrap.querySelectorAll("[data-sinner]").forEach(btn => {
     btn.addEventListener("click", () => {
-      if (btn.dataset.sinner === dealcalcState.sinner) return;
-      dealcalcState.sinner = btn.dataset.sinner;
-      const first = DATA.find(d => d.sinner === dealcalcState.sinner);
-      dealcalcState.identity = first ? first.identity : null;
-      dealcalcState.selId = null;
-      dealcalcRenderSinnerSwitch();
-      dealcalcRenderIdentityGrid();
-      dealcalcRenderSkillBar();
-      dealcalcRenderSkillDetail();
-      dealcalcRenderSelfKwGrid();
-      dealcalcRenderTargetKwGrid();
-      renderDealCalcView();
+      const sn = btn.dataset.sinner;
+      if (sn === dealcalcState.sinner) return;
+      dealcalcState.sinner = sn;
+      const m = dealcalcMember(sn);
+      if (m){
+        dealcalcState.identity = m.identity;
+        dealcalcState.active = {sinner: sn, idx: 0};
+      } else {
+        const first = DATA.find(d => d.sinner === sn);
+        dealcalcState.identity = first ? first.identity : null;
+      }
+      dealcalcRefreshAll();
     });
   });
 }
@@ -6278,7 +6478,7 @@ function dealcalcComputeAutoKw(side){
       (e.skills || []).forEach(s => texts.push(s.name || ""));
     });
   } else {
-    const sinner = dealcalcState.sinner, identity = dealcalcState.identity;
+    const {sinner, identity} = dealcalcAttacker();
     if (!sinner || !identity) return [];
     dealcalcBuildSkillOptions(sinner, identity).forEach(o => {
       texts.push(o.name);
@@ -6472,15 +6672,17 @@ function dealcalcRenderGiftPickerList(){
     .slice(0, 120);
   const box = document.getElementById("dcGiftPickerList");
   if (!list.length){ box.innerHTML = `<div class="dealcalc-gift-empty">검색 결과 없음</div>`; return; }
+  const bug = dealcalcBugMode();
   box.innerHTML = list.map(g => {
     const color = GIFT_RANK_COLOR[g.rankNum] || "#8a8f98";
-    return `<button type="button" class="dealcalc-picker-gift-card" data-gift="${escapeHTML(g.name)}">
+    const conflict = bug ? null : dealcalcGiftConflictReason(g.name, dealcalcState.equippedGifts);
+    return `<button type="button" class="dealcalc-picker-gift-card${conflict ? " is-blocked" : ""}" data-gift="${escapeHTML(g.name)}"${conflict ? ` disabled title="${escapeHTML(conflict)}"` : ""}>
       ${g.icon ? `<img src="${g.icon}" alt="">` : ""}
       <span>${escapeHTML(g.name)}</span>
       <span class="dealcalc-gift-card-rank" style="background:${color}">${escapeHTML(g.rank)}</span>
     </button>`;
   }).join("");
-  box.querySelectorAll("[data-gift]").forEach(btn => {
+  box.querySelectorAll("[data-gift]:not([disabled])").forEach(btn => {
     btn.addEventListener("click", () => {
       dealcalcState.equippedGifts.push(btn.dataset.gift);
       dealcalcRenderGiftEquipped();
@@ -6514,7 +6716,9 @@ function dealcalcRenderGiftEquipped(){
       ? `<select class="dealcalc-gift-card-tier" data-gift-tier="${escapeHTML(name)}">${tiers.map((t, i) => `<option value="${i}"${i === tierIdx ? " selected" : ""}>${escapeHTML(t.label)}</option>`).join("")}</select>`
       : "";
     const color = GIFT_RANK_COLOR[g.rankNum] || "#8a8f98";
-    return `<div class="dealcalc-gift-card">
+    const conflict = dealcalcBugMode() ? null : dealcalcGiftConflictReason(name, dealcalcState.equippedGifts);
+    return `<div class="dealcalc-gift-card${conflict ? " is-conflict" : ""}">
+      ${conflict ? `<div class="dealcalc-warn" style="margin:0 0 6px;">함께 가질 수 없음: ${escapeHTML(conflict)}</div>` : ""}
       <div class="dealcalc-gift-card-head">
         ${g.icon ? `<img src="${g.icon}" alt="">` : ""}
         <span class="dealcalc-gift-card-name">${escapeHTML(g.name)}</span>
@@ -6596,7 +6800,7 @@ function renderDealCalcView(){
   const dmgMultRaw = document.getElementById("dcDamageMult").value;
   const dmgMult = dmgMultRaw === "" ? 1 : Math.max(0, Number(dmgMultRaw) || 0);
 
-  const level = Math.max(1, Number(document.getElementById("dcLevel").value) || 60);
+  const level = Math.max(1, Number(dealcalcSettings(dealcalcAttacker().sinner).level) || 60);
   const atkBonus = Number(document.getElementById("dcAtkLevelBonus").value) || 0;
   const ownedCost = Math.max(0, Number(document.getElementById("dcOwnedCost").value) || 0);
   const wealthGift = dealcalcHasWealthGift();
@@ -6681,6 +6885,24 @@ function renderDealCalcView(){
     blocks.push(`</div>`);
   });
   blocks.push(`</details>`);
+  // 같은 턴에 편성된 다른 슬롯의 효과(예: 다른 수감자의 E.G.O 침식이 주는 속성 피해 증가)는
+  // 텍스트가 제각각이라 자동 반영하지 않고, 참고용으로 모아 보여준다 → 필요한 만큼 기타 보정치에 반영.
+  const others = [];
+  dealcalcPartySinners().forEach(sn => {
+    const m = dealcalcMember(sn);
+    const opts = dealcalcSlotOptions(sn, m.identity);
+    m.slots.forEach((id, i) => {
+      const a = dealcalcState.active;
+      if (a && a.sinner === sn && a.idx === i) return;
+      const so = opts.find(x => x.id === id);
+      if (!so) return;
+      const eff = so.coinEffects ? Object.keys(so.coinEffects).sort((x, y) => Number(x) - Number(y)).map(k => `${k}: ${linkifyKeywords(so.coinEffects[k])}`).join("<br>") : "";
+      others.push(`<div class="dealcalc-other-slot"><div class="dealcalc-other-slot-head">${escapeHTML(sn)}${m.slots.length > 1 ? ` ${i + 1}` : ""} · ${escapeHTML(so.name)} <span class="dealcalc-note">${escapeHTML(so.tag)}</span></div>${eff ? `<div class="dealcalc-note">${eff}</div>` : ""}</div>`);
+    });
+  });
+  if (others.length){
+    blocks.push(`<details class="dealcalc-advanced"><summary>같은 턴의 다른 슬롯 효과 (참고 — 필요하면 기타 보정치에 반영)</summary>${others.join("")}</details>`);
+  }
   if (!bug){
     blocks.push(`<div class="dealcalc-note" style="margin-top:12px;">크리에이티브 모드: 내성 배율은 실제 게임에 존재하는 5단계로 제한되고, 자신 피해량 증감·대상 취약/보호는 ±100%로 제한됩니다. 버그판으로 전환하면 임의 배율·무제한 수치를 입력할 수 있습니다.</div>`);
   }
@@ -6689,12 +6911,19 @@ function renderDealCalcView(){
 function dealcalcWireInputs(){
   document.getElementById("dcEnemySearch").addEventListener("input", dealcalcRenderEnemyList);
   document.getElementById("dcAttackType").addEventListener("change", renderDealCalcView);
-  document.getElementById("dealCalcBugMode").addEventListener("change", renderDealCalcView);
-  document.getElementById("dcSync").addEventListener("change", () => {
+  document.getElementById("dealCalcBugMode").addEventListener("change", () => {
     dealcalcRenderSkillBar();
+    dealcalcRenderGiftEquipped();
+    renderDealCalcView();
+  });
+  document.getElementById("dcSync").addEventListener("change", () => {
+    dealcalcSettings(dealcalcState.sinner).sync = Number(document.getElementById("dcSync").value) || 4;
+    dealcalcNormalizeSlots(dealcalcState.sinner);
+    dealcalcRefreshAll();
+  });
+  document.getElementById("dcLevel").addEventListener("input", () => {
+    dealcalcSettings(dealcalcState.sinner).level = Math.max(1, Math.min(65, Number(document.getElementById("dcLevel").value) || 60));
     dealcalcRenderSkillDetail();
-    dealcalcRenderSelfKwGrid();
-    dealcalcRenderTargetKwGrid();
     renderDealCalcView();
   });
   document.getElementById("dcSelfKwOpenPicker").addEventListener("click", () => dealcalcOpenKwPicker("self"));
@@ -6711,7 +6940,7 @@ function dealcalcWireInputs(){
     if (!document.getElementById("dcKwPickerModal").hidden) dealcalcCloseKwPicker();
     if (!document.getElementById("dcGiftPickerModal").hidden) dealcalcCloseGiftPicker();
   });
-  ["dcLevel","dcAtkLevelBonus","dcCrit","dcClashRounds","dcCoinCountAdj","dcDamageMult","dcOwnedCost",
+  ["dcAtkLevelBonus","dcCrit","dcClashRounds","dcCoinCountAdj","dcDamageMult","dcOwnedCost",
    "dcSelfDmgPct","dcManualMs","dcManualMd","dcDefLevel","dcSinRes","dcSinResCustom","dcTypeRes",
    "dcTypeResCustom","dcStagger","dcTargetVulnPct"].forEach(id => {
     const el = document.getElementById(id);
@@ -6721,16 +6950,12 @@ function dealcalcWireInputs(){
 }
 dealcalcState.sinner = SINNER_ORDER[0];
 (() => { const first = DATA.find(d => d.sinner === dealcalcState.sinner); dealcalcState.identity = first ? first.identity : null; })();
-dealcalcRenderSinnerSwitch();
-dealcalcRenderIdentityGrid();
-dealcalcRenderSkillBar();
-dealcalcRenderSkillDetail();
-dealcalcRenderSelfKwGrid();
-dealcalcRenderTargetKwGrid();
+dealcalcSetSlotCount(dealcalcState.sinner, 1);
 dealcalcPopulateAttackType();
 dealcalcRenderEnemyList();
 dealcalcRenderEnemyPicked();
 dealcalcRenderGiftEquipped();
+dealcalcRefreshAll();
 dealcalcWireInputs();
 
 /* ---- 이름만 검색 토글 (설정이 아니라 검색창 옆에 노출, 자주 켜고 끌 것으로 예상) ---- */

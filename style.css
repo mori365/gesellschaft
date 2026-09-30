@@ -985,6 +985,33 @@
   .dealcalc-mode-toggle .toggle-track::after{ width:17px; height:17px; }
   #dealCalcModeLabel{ display:inline-block; min-width:70px; text-align:left; }
   body[data-dealcalc-bug="1"] .dealcalc-mode-toggle{ color:var(--sin-wrath); }
+  .dealcalc-slotbar-wrap{
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:10px 12px; margin-bottom:16px;
+  }
+  .dealcalc-slotbar-title{ font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:8px; }
+  .dealcalc-slotbar{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
+  .dealcalc-turn-slot{
+    flex:none; display:flex; align-items:center; gap:8px; min-width:150px; max-width:220px;
+    border:2px solid var(--border-strong); background:var(--surface-2); border-radius:9px;
+    padding:6px 10px 6px 6px; cursor:pointer; text-align:left; color:var(--text);
+  }
+  .dealcalc-turn-slot:hover{ border-color:var(--text-faint); }
+  .dealcalc-turn-slot.is-active{ border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .dealcalc-turn-slot.is-ego{ background:color-mix(in srgb, var(--sin-wrath) 8%, var(--surface-2)); }
+  .dealcalc-turn-slot-face{ width:30px; height:30px; border-radius:6px; object-fit:cover; flex:none; }
+  .dealcalc-turn-slot-text{ display:flex; flex-direction:column; min-width:0; }
+  .dealcalc-turn-slot-tag{ font-size:10.5px; color:var(--text-faint); font-weight:700; }
+  .dealcalc-turn-slot-name{ font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:3px; }
+  .dealcalc-turn-slot-name img{ width:13px; height:13px; flex:none; }
+  .dealcalc-slotcount{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .dealcalc-slotcount-label{ font-size:12.5px; font-weight:600; color:var(--text-muted); }
+  .dealcalc-sinner-switch .picker-sinner-btn.is-in-party{ opacity:1; border-color:color-mix(in srgb, var(--accent) 55%, var(--border-strong)); }
+  .dealcalc-sinner-switch .picker-sinner-btn.is-current{ border-color:var(--accent); }
+  .dealcalc-skill-slot.is-ego{ border-style:dashed; }
+  .dealcalc-skill-slot:disabled{ opacity:0.35; cursor:not-allowed; }
+  .dealcalc-other-slot{ padding:6px 0; border-bottom:1px dashed var(--border); font-size:12px; }
+  .dealcalc-other-slot-head{ font-weight:700; color:var(--text); margin-bottom:2px; }
   .dealcalc-inline-toggle{ flex:none; }
   .dealcalc-inline-toggle .toggle-track{ width:34px; height:19px; }
   .dealcalc-inline-toggle .toggle-track::after{ width:15px; height:15px; }
@@ -1152,4 +1179,7 @@
     border-radius:8px; padding:6px 10px; cursor:pointer; font-size:12.5px; color:var(--text);
   }
   .dealcalc-picker-gift-card:hover{ border-color:var(--accent); }
+  .dealcalc-picker-gift-card.is-blocked{ opacity:0.35; cursor:not-allowed; }
+  .dealcalc-picker-gift-card.is-blocked:hover{ border-color:var(--border-strong); }
+  .dealcalc-gift-card.is-conflict{ border-color:var(--sin-wrath); }
   .dealcalc-picker-gift-card img{ width:22px; height:22px; object-fit:contain; border-radius:4px; flex:none; }

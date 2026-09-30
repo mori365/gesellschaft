@@ -279,17 +279,24 @@
       </label>
     </div>
 
+    <div class="dealcalc-slotbar-wrap">
+      <div class="dealcalc-slotbar-title" title="편성된 수감자들의 이번 턴 스킬 슬롯입니다. 슬롯을 누르면 그 스킬의 데미지를 계산하고, 아래에서 그 슬롯에 넣을 스킬을 바꿀 수 있습니다.">이번 턴 슬롯</div>
+      <div class="dealcalc-slotbar" id="dcSlotBar"></div>
+    </div>
+
     <div class="dealcalc-grid">
       <div class="dealcalc-col">
         <h3>공격 측</h3>
         <div class="dealcalc-sinner-switch" id="dcSinnerSwitch"></div>
         <div class="dealcalc-identity-grid" id="dcIdentityGrid"></div>
+        <div class="dealcalc-slotcount" id="dcSlotCount"></div>
 
+        <div class="dealcalc-note">슬롯에 넣을 스킬 (누르면 선택된 슬롯에 배정)</div>
         <div class="dealcalc-skillbar" id="dcSkillBar"></div>
         <div class="dealcalc-skill-detail" id="dcSkillDetail"></div>
 
         <div class="dealcalc-row-3">
-          <div><label>인격 레벨</label><input type="number" id="dcLevel" value="60" min="1" max="65" step="1"></div>
+          <div><label title="편집 중인 수감자의 인격 레벨 (수감자마다 따로 저장)">인격 레벨</label><input type="number" id="dcLevel" value="60" min="1" max="65" step="1"></div>
           <div><label title="동기화 단계에 따라 사용 가능한 스킬 슬롯(3스킬/강화 스킬 등)이 달라집니다. 다만 각 스킬의 위력·코인 수치 자체는 4단계(최대) 기준 데이터만 있어 단계를 낮춰도 수치는 동일하게 표시됩니다.">동기화</label>
             <select id="dcSync">
               <option value="1">1단계</option>
