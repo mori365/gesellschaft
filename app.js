@@ -6047,7 +6047,7 @@ const DEALCALC_TIER_MULT = {"약점":2.0, "취약":1.5, "보통":1.0, "견딤":0
 const DEALCALC_SELF_KEYWORDS = ["화상","출혈","진동","파열","침잠","충전","호흡"];
 const dealcalcState = {
   sinner: null, identity: null, selId: null, skillOpts: [],
-  party: {}, active: null, memberSettings: {},
+  party: {}, active: null, memberSettings: {}, egoLevel: {},
   enemyIdxs: new Set(), selfKw: {}, extraKw: [], targetKw: {}, targetExtraKw: [], equippedGifts: [], giftTier: {},
 };
 // 기프트 effect 텍스트를 "기본 효과/+/++" 단계로 분리 (없으면 단일 단계로 취급)
@@ -6154,40 +6154,53 @@ function dealcalcSkillSin(sinner, identity, skillKey){
   const idx = {skill1:0, skill2:1, skill3:2}[skillKey];
   return (prof.skills[idx] && prof.skills[idx].sin) || null;
 }
-// 수비 스킬은 "반격"류만 실제로 데미지를 입히고, "가드"/"회피"(및 그 재명명 버전)는 데미지를
-// 주지 않는다. 정식 명칭이 아닌 플레이버 명칭으로 재명명된 수비 스킬은 유형을 이름만으로
-// 구분할 수 없어, 그 인격의 기본 수비 스킬 이름에 "반격"이 포함되는지로 판정한다(강화판도
-// 같은 수비 슬롯이므로 동일하게 취급). 이 방식으로 구분되지 않는 소수의 경우는 보수적으로
-// "데미지 없음"(가드/회피 취급)으로 처리해, 실제로는 없어야 할 데미지가 잘못 표시되는
-// 쪽보다 데미지가 0으로 나와 눈에 띄게 틀리는 쪽을 택한다.
-function dealcalcBuildSkillOptions(sinner, identity){
+// 수치는 게임 static data(IDENTITY_UPTIE, sync_data.js)의 해당 동기화 단계 값을 우선 사용하고,
+// 없으면 나무위키에서 긁은 4단계 수치로 대신한다. 코인 효과 문구는 4단계 기준 텍스트뿐이라,
+// 해당 단계의 효과가 4단계와 다르면 fxNote로 표시한다.
+// 수비 스킬은 반격(COUNTER)만 데미지를 준다. 게임 데이터가 없는 경우에만 이름에 "반격"이
+// 들어가는지로 추정한다.
+function dealcalcTierValues(t, fallback){
+  if (!t) return fallback;
+  return {power: t.p, coin: t.c, coinCount: Math.max(1, t.n || 1), lvCorr: t.lc || 0, sin: t.s || null, fxNote: !!t.fx};
+}
+function dealcalcBuildSkillOptions(sinner, identity, tier = 4){
   if (!sinner || !identity) return [];
-  const detail = IDENTITY_SKILL_DETAIL[`${sinner}|${identity}`];
-  const specialsAll = IDENTITY_SPECIAL_SKILLS[`${sinner}|${identity}`] || [];
+  const key = `${sinner}|${identity}`;
+  const detail = IDENTITY_SKILL_DETAIL[key];
+  const up = (typeof IDENTITY_UPTIE !== "undefined") ? IDENTITY_UPTIE[key] : null;
+  const specialsAll = IDENTITY_SPECIAL_SKILLS[key] || [];
   const slotDefs = [["skill1","스킬1"], ["skill2","스킬2"], ["skill3","스킬3"], ["defense","수비"]];
-  const defenseDealsDamage = !!(detail && detail.defense && /반격/.test(detail.defense.name || ""));
+  const defenseDealsDamage = up ? up.dt === "COUNTER" : !!(detail && detail.defense && /반격/.test(detail.defense.name || ""));
   const out = [];
-  slotDefs.forEach(([key, label], i) => {
-    const baseData = key === "defense" ? (detail && detail.defense) : (detail && detail.skills && detail.skills[i]);
+  slotDefs.forEach(([slot, label], i) => {
+    const baseData = slot === "defense" ? (detail && detail.defense) : (detail && detail.skills && detail.skills[i]);
     if (baseData && baseData.name){
-      out.push({
-        id: `${key}|base`, slotKey: key, tag: label, kind: "base",
-        name: baseData.name, sin: dealcalcSkillSin(sinner, identity, key),
+      const tiers = up ? (slot === "defense" ? up.df : up.sk[i]) : null;
+      const v = dealcalcTierValues(tiers && tiers[tier - 1], {
         power: dealcalcParseLead(baseData.power), coin: dealcalcParseLead(baseData.coin),
-        coinCount: Math.max(1, Number(baseData.coinCount) || 1),
+        coinCount: Math.max(1, Number(baseData.coinCount) || 1), lvCorr: 0,
+        sin: dealcalcSkillSin(sinner, identity, slot), fxNote: false,
+      });
+      out.push({
+        id: `${slot}|base`, slotKey: slot, tag: label, kind: "base", name: baseData.name,
+        ...v, sin: v.sin || (slot === "defense" ? null : dealcalcSkillSin(sinner, identity, slot)),
         coinEffects: baseData.coinEffects || null,
-        dealsDamage: key === "defense" ? defenseDealsDamage : true,
+        dealsDamage: slot === "defense" ? defenseDealsDamage : true,
       });
     }
-    specialsAll.filter(s => s.attachTo === key).forEach((s, si) => {
+    specialsAll.filter(s => s.attachTo === slot).forEach((s, si) => {
       const keysLen = s.coinEffects ? Object.keys(s.coinEffects).length : 0;
-      out.push({
-        id: `${key}|special${si}`, slotKey: key, tag: `${label} 강화`, kind: "special",
-        name: s.name, sin: s.sin,
+      const spIdx = specialsAll.indexOf(s);
+      const sp = up && up.sp ? up.sp[`${slot}|${spIdx}`] : null;
+      const v = dealcalcTierValues(sp && sp.t[tier - 1], {
         power: dealcalcParseLead(s.power), coin: dealcalcParseLead(s.coin),
-        coinCount: Math.max(1, Number(s.coinCount) || 0, keysLen),
+        coinCount: Math.max(1, Number(s.coinCount) || 0, keysLen), lvCorr: 0, sin: s.sin, fxNote: false,
+      });
+      out.push({
+        id: `${slot}|special${si}`, slotKey: slot, tag: `${label} 강화`, kind: "special", name: s.name,
+        ...v, sin: v.sin || s.sin,
         coinEffects: s.coinEffects || null, refNote: s.refNote,
-        dealsDamage: key === "defense" ? defenseDealsDamage : true,
+        dealsDamage: slot === "defense" ? (sp && sp.d ? sp.d === "COUNTER" : defenseDealsDamage) : true,
       });
     });
   });
@@ -6204,21 +6217,37 @@ function dealcalcBuildEgoOptions(sinner){
       const meta = EGO_DATA[slug];
       const det = EGO_SKILL_DETAIL[slug];
       const egoName = meta.title.endsWith(` ${sinner}`) ? meta.title.slice(0, -(sinner.length + 1)) : meta.title;
-      [["awakening", "각성"], ["corrosion", "침식"]].forEach(([k, lbl]) => {
+      const ts = (typeof EGO_THREADSPIN !== "undefined") ? EGO_THREADSPIN[slug] : null;
+      const level = dealcalcEgoLevel(slug);
+      [["awakening", "각성", "a"], ["corrosion", "침식", "c"]].forEach(([k, lbl, tk]) => {
         const s = det[k];
         if (!s) return;
-        // E.G.O 데이터는 효과가 있는 코인만 번호로 기록되어 있어, 가장 큰 코인 번호를 코인 수로 본다
+        // 게임 데이터가 없으면, 효과가 있는 코인만 번호로 기록된 나무위키 데이터에서 가장 큰 코인 번호를 코인 수로 추정
         const keys = s.coinEffects ? Object.keys(s.coinEffects).map(Number).filter(n => n > 0) : [];
-        out.push({
-          id: `ego|${slug}|${k}`, slotKey: "ego", tag: `E.G.O ${lbl} · ${meta.grade}`, kind: "ego",
-          name: k === "corrosion" ? `${egoName} (침식)` : egoName, sin: s.sin,
+        const v = dealcalcTierValues(ts && ts[tk] && ts[tk][level - 1], {
           power: dealcalcParseLead(s.power), coin: dealcalcParseLead(s.coin),
-          coinCount: Math.max(1, ...keys),
+          coinCount: Math.max(1, ...keys), lvCorr: 0, sin: s.sin, fxNote: false,
+        });
+        out.push({
+          id: `ego|${slug}|${k}`, slotKey: "ego", tag: `E.G.O ${lbl} · ${meta.grade}`, kind: "ego", egoSlug: slug,
+          name: k === "corrosion" ? `${egoName} (침식)` : egoName,
+          ...v, sin: v.sin || s.sin,
           coinEffects: s.coinEffects || null, dealsDamage: true,
         });
       });
     });
   return out;
+}
+// E.G.O 해석 단계: 기본값은 EGO_SKILL_DETAIL 텍스트가 기준으로 삼는 단계(대부분 4), 최대 5(해석사슬)
+function dealcalcEgoMaxLevel(slug){
+  const ts = (typeof EGO_THREADSPIN !== "undefined") ? EGO_THREADSPIN[slug] : null;
+  return ts ? ts.max : 4;
+}
+function dealcalcEgoLevel(slug){
+  const ts = (typeof EGO_THREADSPIN !== "undefined") ? EGO_THREADSPIN[slug] : null;
+  const def = ts ? ts.txt : 4;
+  const v = dealcalcState.egoLevel[slug];
+  return Math.max(1, Math.min(dealcalcEgoMaxLevel(slug), v || def));
 }
 function dealcalcSettings(sinner){
   if (!dealcalcState.memberSettings[sinner]) dealcalcState.memberSettings[sinner] = {level: 60, sync: 4};
@@ -6227,7 +6256,7 @@ function dealcalcSettings(sinner){
 // 3스킬·강화(EGO 부식) 스킬은 동기화 3단계부터 해금 — 인격 스킬 수치 자체는 현재 4단계 데이터 기준.
 function dealcalcSlotOptions(sinner, identity){
   const tier = dealcalcSettings(sinner).sync;
-  const base = dealcalcBuildSkillOptions(sinner, identity);
+  const base = dealcalcBuildSkillOptions(sinner, identity, tier);
   const gated = tier >= 3 ? base : base.filter(o => o.slotKey !== "skill3" && o.kind !== "special");
   return gated.concat(dealcalcBuildEgoOptions(sinner));
 }
@@ -6398,15 +6427,30 @@ function dealcalcRenderSkillDetail(){
   rows.push(`<div class="dealcalc-note">분석 중: ${escapeHTML(a.sinner)}${m.slots.length > 1 ? ` 슬롯 ${a.idx + 1}` : ""} · ${escapeHTML(m.identity)} (Lv.${dealcalcSettings(a.sinner).level} · 동기화 ${dealcalcSettings(a.sinner).sync})</div>`);
   rows.push(`<div class="dealcalc-skill-detail-head">${sinIcon ? `<img src="${sinIcon}" width="16" height="16" alt="">` : ""}${escapeHTML(o.name)}${o.refNote ? ` <span class="dealcalc-note">(${escapeHTML(o.refNote)})</span>` : ""}</div>`);
   if (o.slotKey === "defense" && !o.dealsDamage){
-    rows.push(`<div class="dealcalc-warn">가드/회피 계열 수비 스킬로 추정되어 데미지를 계산하지 않습니다 (반격형 수비만 데미지 계산).</div>`);
+    rows.push(`<div class="dealcalc-warn">가드/회피 수비 스킬이라 데미지를 계산하지 않습니다 (반격만 데미지 계산).</div>`);
   }
-  rows.push(`<div class="dealcalc-skill-detail-stats"><span>위력 ${o.power}</span><span>코인위력 ${o.coin >= 0 ? "+" : ""}${o.coin}</span><span>코인 ${o.coinCount}개</span></div>`);
+  if (o.kind === "ego"){
+    const max = dealcalcEgoMaxLevel(o.egoSlug), cur = dealcalcEgoLevel(o.egoSlug);
+    rows.push(`<div class="dealcalc-row"><label>E.G.O 해석 단계</label><select id="dcEgoLevel">${
+      Array.from({length: max}, (_, i) => `<option value="${i + 1}"${i + 1 === cur ? " selected" : ""}>${i + 1}단계${i + 1 === 5 ? " (해석사슬)" : ""}</option>`).join("")
+    }</select></div>`);
+  }
+  const lv = o.lvCorr ? ` <span class="dealcalc-note">(공격 레벨 ${o.lvCorr > 0 ? "+" : ""}${o.lvCorr})</span>` : "";
+  rows.push(`<div class="dealcalc-skill-detail-stats"><span>위력 ${o.power}</span><span>코인위력 ${o.coin >= 0 ? "+" : ""}${o.coin}</span><span>코인 ${o.coinCount}개</span>${lv}</div>`);
+  if (o.fxNote){
+    rows.push(`<div class="dealcalc-note">※ 이 ${o.kind === "ego" ? "해석" : "동기화"} 단계에서는 코인 효과가 아래 문구(최대 단계 기준)와 다릅니다. 수치(위력·코인위력·코인 수)는 이 단계 기준입니다.</div>`);
+  }
   if (o.coinEffects && Object.keys(o.coinEffects).length){
     const lines = Object.keys(o.coinEffects).sort((a, b) => Number(a) - Number(b))
       .map(k => `<div>${k}: ${linkifyKeywords(o.coinEffects[k])}</div>`);
     rows.push(`<div class="dealcalc-skill-detail-coins">${lines.join("")}</div>`);
   }
   box.innerHTML = rows.join("");
+  const egoSel = box.querySelector("#dcEgoLevel");
+  if (egoSel) egoSel.addEventListener("change", () => {
+    dealcalcState.egoLevel[o.egoSlug] = Number(egoSel.value);
+    dealcalcRefreshAll();
+  });
 }
 function dealcalcRenderIdentityGrid(){
   const grid = document.getElementById("dcIdentityGrid");
@@ -6806,7 +6850,8 @@ function renderDealCalcView(){
   const wealthGift = dealcalcHasWealthGift();
   document.getElementById("dcWealthDetected").hidden = !wealthGift;
   const wealthBonus = wealthGift ? Math.min(20, Math.floor(ownedCost / 500)) : 0;
-  const atkLevel = level + atkBonus + wealthBonus;
+  // 공격 레벨 = 인격 레벨 + 스킬별 공격 레벨 보정(게임 데이터의 skillLevelCorrection, 예: E.G.O -4) + 추가 보정
+  const atkLevel = level + (o.lvCorr || 0) + atkBonus + wealthBonus;
 
   const clashRounds = Math.max(0, Math.round(Number(document.getElementById("dcClashRounds").value) || 0));
   const crit = document.getElementById("dcCrit").checked;
