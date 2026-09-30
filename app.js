@@ -6045,7 +6045,7 @@ document.getElementById("enemyResetAll").addEventListener("click", () => {
    기본위력·코인위력·코인수·공격레벨은 인격/레벨 선택에서 항상 파생시키며 사용자가 직접 입력하지 않는다. */
 const DEALCALC_TIER_MULT = {"약점":2.0, "취약":1.5, "보통":1.0, "견딤":0.75, "내성":0.5};
 const DEALCALC_SELF_KEYWORDS = ["화상","출혈","진동","파열","침잠","충전","호흡"];
-const dealcalcState = { sinner: null, identity: null, selId: null, skillOpts: [], enemyIdxs: new Set(), selfKw: {}, extraKw: [], equippedGifts: [], giftTier: {} };
+const dealcalcState = { sinner: null, identity: null, selId: null, skillOpts: [], enemyIdxs: new Set(), selfKw: {}, extraKw: [], targetKw: {}, targetExtraKw: [], equippedGifts: [], giftTier: {} };
 // 기프트 effect 텍스트를 "기본 효과/+/++" 단계로 분리 (없으면 단일 단계로 취급)
 function dealcalcGiftEffectTiers(effectText){
   const lines = String(effectText || "").split("\n");
@@ -6119,11 +6119,18 @@ function dealcalcSkillSin(sinner, identity, skillKey){
   const idx = {skill1:0, skill2:1, skill3:2}[skillKey];
   return (prof.skills[idx] && prof.skills[idx].sin) || null;
 }
+// 수비 스킬은 "반격"류만 실제로 데미지를 입히고, "가드"/"회피"(및 그 재명명 버전)는 데미지를
+// 주지 않는다. 정식 명칭이 아닌 플레이버 명칭으로 재명명된 수비 스킬은 유형을 이름만으로
+// 구분할 수 없어, 그 인격의 기본 수비 스킬 이름에 "반격"이 포함되는지로 판정한다(강화판도
+// 같은 수비 슬롯이므로 동일하게 취급). 이 방식으로 구분되지 않는 소수의 경우는 보수적으로
+// "데미지 없음"(가드/회피 취급)으로 처리해, 실제로는 없어야 할 데미지가 잘못 표시되는
+// 쪽보다 데미지가 0으로 나와 눈에 띄게 틀리는 쪽을 택한다.
 function dealcalcBuildSkillOptions(sinner, identity){
   if (!sinner || !identity) return [];
   const detail = IDENTITY_SKILL_DETAIL[`${sinner}|${identity}`];
   const specialsAll = IDENTITY_SPECIAL_SKILLS[`${sinner}|${identity}`] || [];
   const slotDefs = [["skill1","스킬1"], ["skill2","스킬2"], ["skill3","스킬3"], ["defense","수비"]];
+  const defenseDealsDamage = !!(detail && detail.defense && /반격/.test(detail.defense.name || ""));
   const out = [];
   slotDefs.forEach(([key, label], i) => {
     const baseData = key === "defense" ? (detail && detail.defense) : (detail && detail.skills && detail.skills[i]);
@@ -6134,6 +6141,7 @@ function dealcalcBuildSkillOptions(sinner, identity){
         power: dealcalcParseLead(baseData.power), coin: dealcalcParseLead(baseData.coin),
         coinCount: Math.max(1, Number(baseData.coinCount) || 1),
         coinEffects: baseData.coinEffects || null,
+        dealsDamage: key === "defense" ? defenseDealsDamage : true,
       });
     }
     specialsAll.filter(s => s.attachTo === key).forEach((s, si) => {
@@ -6144,6 +6152,7 @@ function dealcalcBuildSkillOptions(sinner, identity){
         power: dealcalcParseLead(s.power), coin: dealcalcParseLead(s.coin),
         coinCount: Math.max(1, Number(s.coinCount) || 0, keysLen),
         coinEffects: s.coinEffects || null, refNote: s.refNote,
+        dealsDamage: key === "defense" ? defenseDealsDamage : true,
       });
     });
   });
@@ -6152,8 +6161,13 @@ function dealcalcBuildSkillOptions(sinner, identity){
 function dealcalcSelectedOption(){
   return (dealcalcState.skillOpts || []).find(o => o.id === dealcalcState.selId) || null;
 }
+function dealcalcSyncTier(){ return Number(document.getElementById("dcSync").value) || 4; }
+// 3스킬·강화(EGO 부식) 스킬은 관례상 동기화 3단계부터 해금됨 — 인격별 정확한 해금 단계 데이터는
+// 없어 슬롯 가용 여부만 이렇게 근사한다. 위력·코인 수치 자체는 항상 4단계 기준 데이터로 표시.
 function dealcalcRenderSkillBar(){
-  const opts = dealcalcBuildSkillOptions(dealcalcState.sinner, dealcalcState.identity);
+  const allOpts = dealcalcBuildSkillOptions(dealcalcState.sinner, dealcalcState.identity);
+  const tier = dealcalcSyncTier();
+  const opts = tier >= 3 ? allOpts : allOpts.filter(o => o.slotKey !== "skill3" && o.kind !== "special");
   dealcalcState.skillOpts = opts;
   const bar = document.getElementById("dcSkillBar");
   if (!opts.length){
@@ -6172,6 +6186,7 @@ function dealcalcRenderSkillBar(){
       dealcalcState.selId = btn.dataset.id;
       dealcalcRenderSkillBar();
       dealcalcRenderSkillDetail();
+      dealcalcRenderTargetKwGrid();
       renderDealCalcView();
     });
   });
@@ -6183,6 +6198,9 @@ function dealcalcRenderSkillDetail(){
   const sinIcon = o.sin ? (SIN_ICON_DATA[o.sin] || "") : "";
   const rows = [];
   rows.push(`<div class="dealcalc-skill-detail-head">${sinIcon ? `<img src="${sinIcon}" width="16" height="16" alt="">` : ""}${escapeHTML(o.name)}${o.refNote ? ` <span class="dealcalc-note">(${escapeHTML(o.refNote)})</span>` : ""}</div>`);
+  if (o.slotKey === "defense" && !o.dealsDamage){
+    rows.push(`<div class="dealcalc-warn">가드/회피 계열 수비 스킬로 추정되어 데미지를 계산하지 않습니다 (반격형 수비만 데미지 계산).</div>`);
+  }
   rows.push(`<div class="dealcalc-skill-detail-stats"><span>위력 ${o.power}</span><span>코인위력 ${o.coin >= 0 ? "+" : ""}${o.coin}</span><span>코인 ${o.coinCount}개</span></div>`);
   if (o.coinEffects && Object.keys(o.coinEffects).length){
     const lines = Object.keys(o.coinEffects).sort((a, b) => Number(a) - Number(b))
@@ -6211,6 +6229,7 @@ function dealcalcSelectIdentity(identity){
   dealcalcRenderSkillBar();
   dealcalcRenderSkillDetail();
   dealcalcRenderSelfKwGrid();
+  dealcalcRenderTargetKwGrid();
   renderDealCalcView();
 }
 function dealcalcRenderSinnerSwitch(){
@@ -6231,14 +6250,10 @@ function dealcalcRenderSinnerSwitch(){
       dealcalcRenderSkillBar();
       dealcalcRenderSkillDetail();
       dealcalcRenderSelfKwGrid();
+      dealcalcRenderTargetKwGrid();
       renderDealCalcView();
     });
   });
-}
-function dealcalcPopulateKwDatalist(){
-  const dl = document.getElementById("dcKwOptions");
-  dl.innerHTML = Object.keys(KEYWORD_ICON_DATA).sort((a, b) => a.localeCompare(b, "ko"))
-    .map(kw => `<option value="${escapeHTML(kw)}"></option>`).join("");
 }
 // 텍스트에서 실제 게임 키워드 이름을 찾아낸다 (linkifyKeywords와 동일한 KEYWORD_RE 재사용 —
 // 한 글자짜리 키워드 제외, "광신도"/"소수점 버림" 같은 오탐 방지 규칙도 그대로 적용됨).
@@ -6249,42 +6264,58 @@ function dealcalcScanKeywords(text){
 // 거의 모든 인격 스킬 텍스트에 등장하는 범용 게임 용어(개별 캐릭터 고유 스택이 아님) — 자동
 // 추가 대상에서 제외. 실제 "누적 스택"으로 관리되는 키워드가 아니라 코인 속성·상태 트리거이므로.
 const DEALCALC_AUTO_KW_EXCLUDE = new Set(["파괴 불가 코인","적출 코인","크리티컬","흐트러짐","행동 불가","패닉","공격 레벨","방어 레벨","합 위력","코인 위력"]);
-// 현재 선택된 인격의 전체 스킬(기본+강화)·패시브, 그리고 장착한 에고 기프트(선택된 강화 단계)
-// 텍스트를 모두 훑어서 전용 키워드를 자동으로 찾아낸다. 스킬 선택과 무관하게 "인격 자체가
-// 가진" 키워드 전부를 잡기 위해 선택된 스킬 하나가 아니라 인격의 전체 스킬셋을 스캔한다.
-function dealcalcComputeAutoKw(){
-  const sinner = dealcalcState.sinner, identity = dealcalcState.identity;
-  if (!sinner || !identity) return [];
+// side: "self"면 현재 선택된 인격의 전체 스킬(기본+강화)·패시브 + 장착한 에고 기프트(선택된
+// 강화 단계) 텍스트를 훑어 전용 키워드를 찾는다. "target"이면 현재 선택된 공격 스킬의 코인
+// 효과 텍스트(스킬이 대상에게 무엇을 부여하는지)와 선택된 적들의 패시브·스킬 이름을 훑는다.
+function dealcalcComputeAutoKw(side){
   const texts = [];
-  dealcalcBuildSkillOptions(sinner, identity).forEach(o => {
-    texts.push(o.name);
-    if (o.coinEffects) Object.values(o.coinEffects).forEach(t => texts.push(t));
-  });
-  (IDENTITY_PASSIVE[`${sinner}|${identity}`] || []).forEach(p => texts.push(p.effect));
-  dealcalcState.equippedGifts.forEach(name => {
-    const g = EGO_GIFT_DATA.find(x => x.name === name);
-    if (!g) return;
-    const tiers = dealcalcGiftEffectTiers(g.effect);
-    const storedTier = dealcalcState.giftTier[name];
-    const tierIdx = Math.min(storedTier != null ? storedTier : tiers.length - 1, tiers.length - 1);
-    texts.push(tiers[tierIdx].text);
-  });
+  if (side === "target"){
+    const sel = dealcalcSelectedOption();
+    if (sel && sel.coinEffects) Object.values(sel.coinEffects).forEach(t => texts.push(t));
+    [...dealcalcState.enemyIdxs].forEach(idx => {
+      const e = ENEMY_DATA[idx];
+      (e.passives || []).forEach(p => texts.push(typeof p === "string" ? p : (p.effect || "")));
+      (e.skills || []).forEach(s => texts.push(s.name || ""));
+    });
+  } else {
+    const sinner = dealcalcState.sinner, identity = dealcalcState.identity;
+    if (!sinner || !identity) return [];
+    dealcalcBuildSkillOptions(sinner, identity).forEach(o => {
+      texts.push(o.name);
+      if (o.coinEffects) Object.values(o.coinEffects).forEach(t => texts.push(t));
+    });
+    (IDENTITY_PASSIVE[`${sinner}|${identity}`] || []).forEach(p => texts.push(p.effect));
+    dealcalcState.equippedGifts.forEach(name => {
+      const g = EGO_GIFT_DATA.find(x => x.name === name);
+      if (!g) return;
+      const tiers = dealcalcGiftEffectTiers(g.effect);
+      const storedTier = dealcalcState.giftTier[name];
+      const tierIdx = Math.min(storedTier != null ? storedTier : tiers.length - 1, tiers.length - 1);
+      texts.push(tiers[tierIdx].text);
+    });
+  }
   return dealcalcScanKeywords(texts.join("\n")).filter(k => !DEALCALC_SELF_KEYWORDS.includes(k) && !DEALCALC_AUTO_KW_EXCLUDE.has(k));
 }
-function dealcalcRenderSelfKwGrid(){
-  const grid = document.getElementById("dcSelfKwGrid");
-  const autoKw = dealcalcComputeAutoKw();
-  const extraOnly = dealcalcState.extraKw.filter(k => !autoKw.includes(k));
+function dealcalcKwState(side){
+  return side === "target"
+    ? {kw: dealcalcState.targetKw, extra: dealcalcState.targetExtraKw}
+    : {kw: dealcalcState.selfKw, extra: dealcalcState.extraKw};
+}
+function dealcalcRenderKwGrid(side){
+  const grid = document.getElementById(side === "target" ? "dcTargetKwGrid" : "dcSelfKwGrid");
+  const st = dealcalcKwState(side);
+  const autoKw = dealcalcComputeAutoKw(side);
+  const extraOnly = st.extra.filter(k => !autoKw.includes(k));
   const keys = DEALCALC_SELF_KEYWORDS.concat(autoKw, extraOnly);
   // 더 이상 기본/자동/수동 목록 어디에도 없는 키워드의 저장값은 정리
   const keySet = new Set(keys);
-  Object.keys(dealcalcState.selfKw).forEach(k => { if (!keySet.has(k)) delete dealcalcState.selfKw[k]; });
+  Object.keys(st.kw).forEach(k => { if (!keySet.has(k)) delete st.kw[k]; });
   grid.innerHTML = keys.map(kw => {
     const isAuto = autoKw.includes(kw);
     const removable = !DEALCALC_SELF_KEYWORDS.includes(kw) && !isAuto;
-    const val = dealcalcState.selfKw[kw] || 0;
+    const val = st.kw[kw] || 0;
     const title = isAuto
-      ? `${kw} — 현재 인격/기프트 구성에서 자동 감지된 전용 키워드입니다`
+      ? `${kw} — 현재 선택 구성에서 자동 감지된 전용 키워드입니다`
       : `${kw} 스택 (참고용 — 데미지 반영은 기타 보정치에 수동 계산)`;
     return `<label class="dealcalc-kw-item${isAuto ? " is-auto" : ""}" title="${escapeHTML(title)}">
       ${KEYWORD_ICON_DATA[kw] ? `<img src="${KEYWORD_ICON_DATA[kw]}" alt="">` : ""}
@@ -6295,29 +6326,75 @@ function dealcalcRenderSelfKwGrid(){
   }).join("");
   grid.querySelectorAll("[data-kw]").forEach(inp => {
     inp.addEventListener("input", () => {
-      dealcalcState.selfKw[inp.dataset.kw] = Math.max(0, Number(inp.value) || 0);
+      st.kw[inp.dataset.kw] = Math.max(0, Number(inp.value) || 0);
     });
   });
   grid.querySelectorAll("[data-remove]").forEach(btn => {
     btn.addEventListener("click", () => {
       const kw = btn.dataset.remove;
-      dealcalcState.extraKw = dealcalcState.extraKw.filter(k => k !== kw);
-      delete dealcalcState.selfKw[kw];
-      dealcalcRenderSelfKwGrid();
+      const filtered = st.extra.filter(k => k !== kw);
+      if (side === "target") dealcalcState.targetExtraKw = filtered; else dealcalcState.extraKw = filtered;
+      delete st.kw[kw];
+      dealcalcRenderKwGrid(side);
     });
   });
 }
-function dealcalcAddKw(){
-  const input = document.getElementById("dcKwAddInput");
-  const kw = input.value.trim();
+function dealcalcRenderSelfKwGrid(){ dealcalcRenderKwGrid("self"); }
+function dealcalcRenderTargetKwGrid(){ dealcalcRenderKwGrid("target"); }
+function dealcalcAddKwByName(side, kw){
   if (!kw) return;
-  if (!DEALCALC_SELF_KEYWORDS.includes(kw) && !dealcalcState.extraKw.includes(kw) && !dealcalcComputeAutoKw().includes(kw)){
-    dealcalcState.extraKw.push(kw);
+  const st = dealcalcKwState(side);
+  if (!DEALCALC_SELF_KEYWORDS.includes(kw) && !st.extra.includes(kw) && !dealcalcComputeAutoKw(side).includes(kw)){
+    st.extra.push(kw);
   }
-  dealcalcState.selfKw[kw] = dealcalcState.selfKw[kw] || 1;
-  input.value = "";
-  dealcalcRenderSelfKwGrid();
+  st.kw[kw] = st.kw[kw] || 1;
+  dealcalcRenderKwGrid(side);
+  renderDealCalcView();
 }
+// 키워드 추가 모달: 자신/적 양쪽에서 공용으로 사용, dealcalcKwPickerSide로 대상 구분.
+let dealcalcKwPickerSide = "self";
+const DEALCALC_SPECIAL_KW_FILTERS = DEALCALC_SELF_KEYWORDS.map(k => `특수 ${k}`);
+function dealcalcRenderKwPickerChips(){
+  const wrap = document.getElementById("dcKwPickerSpecialChips");
+  wrap.innerHTML = DEALCALC_SPECIAL_KW_FILTERS.map(k =>
+    `<button type="button" class="dealcalc-enemy-chip" data-kw-quick="${escapeHTML(k)}">${escapeHTML(k)}</button>`
+  ).join("");
+  wrap.querySelectorAll("[data-kw-quick]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      dealcalcAddKwByName(dealcalcKwPickerSide, btn.dataset.kwQuick);
+      dealcalcRenderKwPickerList();
+    });
+  });
+}
+function dealcalcRenderKwPickerList(){
+  const q = document.getElementById("dcKwPickerSearch").value.trim().toLowerCase();
+  const st = dealcalcKwState(dealcalcKwPickerSide);
+  const already = new Set([...DEALCALC_SELF_KEYWORDS, ...dealcalcComputeAutoKw(dealcalcKwPickerSide), ...st.extra]);
+  const list = Object.keys(KEYWORD_ICON_DATA)
+    .filter(k => !already.has(k))
+    .filter(k => !q || k.toLowerCase().includes(q))
+    .sort((a, b) => a.localeCompare(b, "ko"))
+    .slice(0, 200);
+  const box = document.getElementById("dcKwPickerList");
+  box.innerHTML = list.length
+    ? list.map(k => `<button type="button" class="dealcalc-picker-gift-card" data-kw-add="${escapeHTML(k)}"><img src="${KEYWORD_ICON_DATA[k]}" alt="">${escapeHTML(k)}</button>`).join("")
+    : `<div class="dealcalc-gift-empty">검색 결과 없음</div>`;
+  box.querySelectorAll("[data-kw-add]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      dealcalcAddKwByName(dealcalcKwPickerSide, btn.dataset.kwAdd);
+      dealcalcRenderKwPickerList();
+    });
+  });
+}
+function dealcalcOpenKwPicker(side){
+  dealcalcKwPickerSide = side;
+  document.getElementById("dcKwPickerTitle").textContent = side === "target" ? "적 키워드 추가" : "키워드 추가";
+  document.getElementById("dcKwPickerSearch").value = "";
+  dealcalcRenderKwPickerChips();
+  dealcalcRenderKwPickerList();
+  document.getElementById("dcKwPickerModal").hidden = false;
+}
+function dealcalcCloseKwPicker(){ document.getElementById("dcKwPickerModal").hidden = true; }
 function dealcalcPopulateAttackType(){
   const sel = document.getElementById("dcAttackType");
   sel.innerHTML = `<option value="">(적 속성내성 자동입력용, 선택)</option>` +
@@ -6342,6 +6419,7 @@ function dealcalcRenderEnemyList(){
       dealcalcState.enemyIdxs.has(idx) ? dealcalcState.enemyIdxs.delete(idx) : dealcalcState.enemyIdxs.add(idx);
       dealcalcRenderEnemyList();
       dealcalcRenderEnemyPicked();
+      dealcalcRenderTargetKwGrid();
       renderDealCalcView();
     });
   });
@@ -6362,33 +6440,64 @@ function dealcalcRenderEnemyPicked(){
       dealcalcState.enemyIdxs.delete(Number(btn.dataset.idx));
       dealcalcRenderEnemyList();
       dealcalcRenderEnemyPicked();
+      dealcalcRenderTargetKwGrid();
       renderDealCalcView();
     });
   });
 }
-function dealcalcRenderGiftSearch(){
-  const q = document.getElementById("dcGiftSearch").value.trim().toLowerCase();
-  const box = document.getElementById("dcGiftSearchList");
-  if (!q){ box.innerHTML = ""; return; }
+// 에고 기프트 추가 모달: 기존 에고 기프트 메뉴와 동일한 키워드 탭 필터 재사용, 이름뿐 아니라
+// 효과 텍스트로도 검색 가능.
+let dealcalcGiftPickerKw = null;
+function dealcalcRenderGiftPickerTabs(){
+  const wrap = document.getElementById("dcGiftPickerKwTabs");
+  const items = [{key: null, label: "전체"}, ...GIFT_KEYWORDS.map(k => ({key: k, label: k}))];
+  wrap.innerHTML = items.map(o =>
+    `<button type="button" class="view-tab" data-kw="${o.key === null ? "" : escapeHTML(o.key)}" aria-pressed="${dealcalcGiftPickerKw === o.key}">${o.key ? giftKeywordIconHTML(o.key, 14) : ""}${escapeHTML(o.label)}</button>`
+  ).join("");
+  wrap.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      dealcalcGiftPickerKw = btn.dataset.kw || null;
+      dealcalcRenderGiftPickerTabs();
+      dealcalcRenderGiftPickerList();
+    });
+  });
+}
+function dealcalcRenderGiftPickerList(){
+  const q = document.getElementById("dcGiftPickerSearch").value.trim().toLowerCase();
   const list = EGO_GIFT_DATA
     .filter(g => !dealcalcState.equippedGifts.includes(g.name))
-    .filter(g => g.name.toLowerCase().includes(q) || (g.aliases || []).some(a => a.toLowerCase().includes(q)) || (g.english || "").toLowerCase().includes(q))
-    .slice(0, 40);
-  box.innerHTML = list.map(g => `
-    <button type="button" class="dealcalc-enemy-chip" data-gift="${escapeHTML(g.name)}">
-      ${g.icon ? `<img src="${g.icon}" alt="">` : ""}${escapeHTML(g.name)} (${escapeHTML(g.rank)})
-    </button>`).join("");
+    .filter(g => !dealcalcGiftPickerKw || g.keyword === dealcalcGiftPickerKw)
+    .filter(g => !q || g.name.toLowerCase().includes(q) || (g.aliases || []).some(a => a.toLowerCase().includes(q)) || (g.english || "").toLowerCase().includes(q) || (g.effect || "").toLowerCase().includes(q))
+    .sort((a, b) => a.rankNum - b.rankNum || a.name.localeCompare(b.name, "ko"))
+    .slice(0, 120);
+  const box = document.getElementById("dcGiftPickerList");
+  if (!list.length){ box.innerHTML = `<div class="dealcalc-gift-empty">검색 결과 없음</div>`; return; }
+  box.innerHTML = list.map(g => {
+    const color = GIFT_RANK_COLOR[g.rankNum] || "#8a8f98";
+    return `<button type="button" class="dealcalc-picker-gift-card" data-gift="${escapeHTML(g.name)}">
+      ${g.icon ? `<img src="${g.icon}" alt="">` : ""}
+      <span>${escapeHTML(g.name)}</span>
+      <span class="dealcalc-gift-card-rank" style="background:${color}">${escapeHTML(g.rank)}</span>
+    </button>`;
+  }).join("");
   box.querySelectorAll("[data-gift]").forEach(btn => {
     btn.addEventListener("click", () => {
       dealcalcState.equippedGifts.push(btn.dataset.gift);
-      document.getElementById("dcGiftSearch").value = "";
-      dealcalcRenderGiftSearch();
       dealcalcRenderGiftEquipped();
       dealcalcRenderSelfKwGrid();
       renderDealCalcView();
+      dealcalcRenderGiftPickerList();
     });
   });
 }
+function dealcalcOpenGiftPicker(){
+  document.getElementById("dcGiftPickerSearch").value = "";
+  dealcalcGiftPickerKw = null;
+  dealcalcRenderGiftPickerTabs();
+  dealcalcRenderGiftPickerList();
+  document.getElementById("dcGiftPickerModal").hidden = false;
+}
+function dealcalcCloseGiftPicker(){ document.getElementById("dcGiftPickerModal").hidden = true; }
 function dealcalcRenderGiftEquipped(){
   const box = document.getElementById("dcGiftEquipped");
   if (!dealcalcState.equippedGifts.length){
@@ -6422,7 +6531,6 @@ function dealcalcRenderGiftEquipped(){
       dealcalcState.equippedGifts = dealcalcState.equippedGifts.filter(n => n !== name);
       delete dealcalcState.giftTier[name];
       dealcalcRenderGiftEquipped();
-      dealcalcRenderGiftSearch();
       dealcalcRenderSelfKwGrid();
       renderDealCalcView();
     });
@@ -6476,6 +6584,10 @@ function renderDealCalcView(){
   const result = document.getElementById("dealCalcResult");
   if (!o){
     result.innerHTML = `<div class="dealcalc-note">먼저 수감자·인격·스킬을 선택하세요.</div>`;
+    return;
+  }
+  if (o.slotKey === "defense" && !o.dealsDamage && !bug){
+    result.innerHTML = `<div class="dealcalc-note">가드/회피 계열 수비 스킬은 데미지를 입히지 않습니다. (버그판으로 전환하면 강제로 계산할 수 있습니다)</div>`;
     return;
   }
   const power = o.power, coinPower = o.coin, sin = o.sin;
@@ -6578,9 +6690,27 @@ function dealcalcWireInputs(){
   document.getElementById("dcEnemySearch").addEventListener("input", dealcalcRenderEnemyList);
   document.getElementById("dcAttackType").addEventListener("change", renderDealCalcView);
   document.getElementById("dealCalcBugMode").addEventListener("change", renderDealCalcView);
-  document.getElementById("dcKwAddBtn").addEventListener("click", dealcalcAddKw);
-  document.getElementById("dcKwAddInput").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); dealcalcAddKw(); } });
-  document.getElementById("dcGiftSearch").addEventListener("input", dealcalcRenderGiftSearch);
+  document.getElementById("dcSync").addEventListener("change", () => {
+    dealcalcRenderSkillBar();
+    dealcalcRenderSkillDetail();
+    dealcalcRenderSelfKwGrid();
+    dealcalcRenderTargetKwGrid();
+    renderDealCalcView();
+  });
+  document.getElementById("dcSelfKwOpenPicker").addEventListener("click", () => dealcalcOpenKwPicker("self"));
+  document.getElementById("dcTargetKwOpenPicker").addEventListener("click", () => dealcalcOpenKwPicker("target"));
+  document.getElementById("dcKwPickerClose").addEventListener("click", dealcalcCloseKwPicker);
+  document.getElementById("dcKwPickerBackdrop").addEventListener("click", dealcalcCloseKwPicker);
+  document.getElementById("dcKwPickerSearch").addEventListener("input", dealcalcRenderKwPickerList);
+  document.getElementById("dcGiftOpenPicker").addEventListener("click", dealcalcOpenGiftPicker);
+  document.getElementById("dcGiftPickerClose").addEventListener("click", dealcalcCloseGiftPicker);
+  document.getElementById("dcGiftPickerBackdrop").addEventListener("click", dealcalcCloseGiftPicker);
+  document.getElementById("dcGiftPickerSearch").addEventListener("input", dealcalcRenderGiftPickerList);
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Escape") return;
+    if (!document.getElementById("dcKwPickerModal").hidden) dealcalcCloseKwPicker();
+    if (!document.getElementById("dcGiftPickerModal").hidden) dealcalcCloseGiftPicker();
+  });
   ["dcLevel","dcAtkLevelBonus","dcCrit","dcClashRounds","dcCoinCountAdj","dcDamageMult","dcOwnedCost",
    "dcSelfDmgPct","dcManualMs","dcManualMd","dcDefLevel","dcSinRes","dcSinResCustom","dcTypeRes",
    "dcTypeResCustom","dcStagger","dcTargetVulnPct"].forEach(id => {
@@ -6596,7 +6726,7 @@ dealcalcRenderIdentityGrid();
 dealcalcRenderSkillBar();
 dealcalcRenderSkillDetail();
 dealcalcRenderSelfKwGrid();
-dealcalcPopulateKwDatalist();
+dealcalcRenderTargetKwGrid();
 dealcalcPopulateAttackType();
 dealcalcRenderEnemyList();
 dealcalcRenderEnemyPicked();

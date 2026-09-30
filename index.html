@@ -290,7 +290,14 @@
 
         <div class="dealcalc-row-3">
           <div><label>인격 레벨</label><input type="number" id="dcLevel" value="60" min="1" max="65" step="1"></div>
-          <div><label title="낮은 동기화 단계별 수치는 아직 미지원 — 항상 4단계(최대) 수치로 계산됩니다">동기화</label><select id="dcSync"><option value="4" selected>4단계 (최대)</option></select></div>
+          <div><label title="동기화 단계에 따라 사용 가능한 스킬 슬롯(3스킬/강화 스킬 등)이 달라집니다. 다만 각 스킬의 위력·코인 수치 자체는 4단계(최대) 기준 데이터만 있어 단계를 낮춰도 수치는 동일하게 표시됩니다.">동기화</label>
+            <select id="dcSync">
+              <option value="1">1단계</option>
+              <option value="2">2단계</option>
+              <option value="3">3단계</option>
+              <option value="4" selected>4단계 (최대)</option>
+            </select>
+          </div>
           <div><label title="포이즈 등으로 치명타 조건을 만족한 경우 (기본 +20%)">치명타</label>
             <label class="sync-toggle dealcalc-inline-toggle"><input type="checkbox" id="dcCrit"><span class="toggle-track"></span></label>
           </div>
@@ -304,20 +311,13 @@
           <input type="number" id="dcClashRounds" value="0" min="0" step="1">
         </div>
 
-        <h4 class="dealcalc-subhead" title="선택한 인격의 스킬·패시브, 장착한 기프트 효과에 등장하는 전용 키워드는 자동으로 추가됩니다(파란 '자동' 표시). 그 외 필요한 키워드는 아래에서 검색해서 직접 추가하세요.">자신 키워드 스택</h4>
+        <h4 class="dealcalc-subhead" title="선택한 인격의 스킬·패시브, 장착한 기프트 효과에 등장하는 전용 키워드는 자동으로 추가됩니다(파란 '자동' 표시). 그 외 필요한 키워드는 '+ 키워드 추가'에서 검색해서 직접 추가하세요.">자신 키워드 스택</h4>
         <div class="dealcalc-kw-grid" id="dcSelfKwGrid"></div>
-        <div class="dealcalc-kw-add-row">
-          <input type="text" id="dcKwAddInput" list="dcKwOptions" placeholder="추가할 키워드 검색 (예: 신속, 속박, 취약...)">
-          <datalist id="dcKwOptions"></datalist>
-          <button type="button" id="dcKwAddBtn">+ 추가</button>
-        </div>
+        <button type="button" class="dealcalc-add-btn" id="dcSelfKwOpenPicker">+ 키워드 추가</button>
 
         <h4 class="dealcalc-subhead" title="선택한 기프트의 효과 전문을 그대로 보여줍니다. 458개 기프트의 조건부 효과는 각자 텍스트가 달라 자동으로 수치에 반영하지 못하므로, 필요한 만큼 아래 '기타 보정치'에 직접 계산해 넣어주세요. ('부'는 예외적으로 코스트→공격 레벨 보정을 자동 반영합니다)">장착 에고 기프트</h4>
-        <div class="dealcalc-row">
-          <input type="text" id="dcGiftSearch" placeholder="기프트 이름 검색 후 클릭해서 추가">
-        </div>
-        <div class="dealcalc-enemy-list" id="dcGiftSearchList"></div>
         <div class="dealcalc-gift-equipped" id="dcGiftEquipped"></div>
+        <button type="button" class="dealcalc-add-btn" id="dcGiftOpenPicker">+ 기프트 추가</button>
 
         <details class="dealcalc-advanced">
           <summary>기타 보정치 (조건부 코인 수·가중치, 기프트·패시브 등 수동 반영)</summary>
@@ -380,15 +380,19 @@
           <label>흐트러짐 상태</label>
           <select id="dcStagger">
             <option value="0">없음</option>
-            <option value="1">흐트러짐 (1차 브레이크)</option>
-            <option value="1.5">흐트러짐+ (2차 브레이크)</option>
-            <option value="2">흐트러짐++ (3차 브레이크)</option>
+            <option value="1">흐트러짐</option>
+            <option value="1.5">흐트러짐+</option>
+            <option value="2">흐트러짐++</option>
           </select>
         </div>
         <div class="dealcalc-row">
           <label title="대상의 '취약/보호' 계열 상태이상 총합">대상 취약·보호(%)</label>
           <input type="number" id="dcTargetVulnPct" value="0" step="1">
         </div>
+
+        <h4 class="dealcalc-subhead" title="선택한 적의 패시브, 현재 선택된 스킬 효과에 등장하는 전용 키워드는 자동으로 추가됩니다. 그 외 필요한 키워드는 '+ 키워드 추가'에서 검색해서 직접 추가하세요.">적 키워드 스택</h4>
+        <div class="dealcalc-kw-grid" id="dcTargetKwGrid"></div>
+        <button type="button" class="dealcalc-add-btn" id="dcTargetKwOpenPicker">+ 키워드 추가</button>
       </div>
     </div>
 
@@ -570,6 +574,38 @@
       </button>
     </div>
     <div class="detail-modal-body" id="giftDetailBody"></div>
+  </div>
+</div>
+<div id="dcKwPickerModal" class="detail-modal" hidden>
+  <div class="detail-modal-backdrop" id="dcKwPickerBackdrop"></div>
+  <div class="detail-modal-panel dealcalc-picker-panel">
+    <div class="detail-modal-header">
+      <span class="detail-modal-title" id="dcKwPickerTitle">키워드 추가</span>
+      <button type="button" class="detail-modal-close" id="dcKwPickerClose" aria-label="닫기">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="detail-modal-body">
+      <div class="dealcalc-row"><input type="text" id="dcKwPickerSearch" placeholder="키워드 이름 검색"></div>
+      <div class="dealcalc-picker-chiprow" id="dcKwPickerSpecialChips"></div>
+      <div class="dealcalc-picker-grid" id="dcKwPickerList"></div>
+    </div>
+  </div>
+</div>
+<div id="dcGiftPickerModal" class="detail-modal" hidden>
+  <div class="detail-modal-backdrop" id="dcGiftPickerBackdrop"></div>
+  <div class="detail-modal-panel dealcalc-picker-panel">
+    <div class="detail-modal-header">
+      <span class="detail-modal-title">에고 기프트 추가</span>
+      <button type="button" class="detail-modal-close" id="dcGiftPickerClose" aria-label="닫기">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="detail-modal-body">
+      <div class="dealcalc-row"><input type="text" id="dcGiftPickerSearch" placeholder="이름·효과로 검색"></div>
+      <div class="view-tabs mini-tabs" id="dcGiftPickerKwTabs"></div>
+      <div class="dealcalc-picker-grid" id="dcGiftPickerList"></div>
+    </div>
   </div>
 </div>
 <div id="enemyDetailModal" class="detail-modal" hidden>
