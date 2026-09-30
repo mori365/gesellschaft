@@ -6014,8 +6014,11 @@ document.getElementById("enemyResetAll").addEventListener("click", () => {
    Ms(정적, 서로 덧셈) = 죄종내성(A) + 속성내성(B, 흐트러짐 시 덮어씀) + 레벨차(C=x/(|x|+25)) + 합 보너스(D=0.03×라운드) + 치명타(E=0.2)
    Md(동적, 서로 덧셈) = 자신 피해량 증감(G) + 대상 취약·보호(H)
    출처: blog.limbus.wiki/docs/damage_formula (게임 코드 BattleUnitModel::GiveAttackDamage 기반) — 2026-09-29 조사.
-   기프트/패시브 개별 조건부 효과는 "기타 보정치" 수동 입력으로 반영 (자동 파싱은 순차 확장 예정). */
+   기프트/패시브 개별 조건부 효과는 "기타 보정치" 수동 입력으로 반영 (자동 파싱은 순차 확장 예정).
+   기본위력·코인위력·코인수·공격레벨은 인격/레벨 선택에서 항상 파생시키며 사용자가 직접 입력하지 않는다. */
 const DEALCALC_TIER_MULT = {"약점":2.0, "취약":1.5, "보통":1.0, "견딤":0.75, "내성":0.5};
+const DEALCALC_SELF_KEYWORDS = ["화상","출혈","진동","파열","침잠","충전","호흡"];
+const dealcalcState = { sinner: null, identity: null, selId: null, skillOpts: [], enemyIdxs: new Set(), selfKw: {} };
 function dealcalcA(x){
   if (x < 0) return -0.5;
   if (x < 1) return (x - 1) / 2;
@@ -6070,90 +6073,198 @@ function dealcalcSkillSin(sinner, identity, skillKey){
   const idx = {skill1:0, skill2:1, skill3:2}[skillKey];
   return (prof.skills[idx] && prof.skills[idx].sin) || null;
 }
-function dealcalcSkillOptions(sinner, identity){
+function dealcalcBuildSkillOptions(sinner, identity){
+  if (!sinner || !identity) return [];
   const detail = IDENTITY_SKILL_DETAIL[`${sinner}|${identity}`];
-  if (!detail) return [];
+  const specialsAll = IDENTITY_SPECIAL_SKILLS[`${sinner}|${identity}`] || [];
+  const slotDefs = [["skill1","스킬1"], ["skill2","스킬2"], ["skill3","스킬3"], ["defense","수비"]];
   const out = [];
-  (detail.skills || []).forEach((s, i) => {
-    if (s && s.name) out.push({key: `skill${i+1}`, label: `스킬${i+1} · ${s.name}`, power: Number(s.power)||0, coin: dealcalcParseLead(s.coin), coinCount: Number(s.coinCount)||1});
+  slotDefs.forEach(([key, label], i) => {
+    const baseData = key === "defense" ? (detail && detail.defense) : (detail && detail.skills && detail.skills[i]);
+    if (baseData && baseData.name){
+      out.push({
+        id: `${key}|base`, slotKey: key, tag: label, kind: "base",
+        name: baseData.name, sin: dealcalcSkillSin(sinner, identity, key),
+        power: dealcalcParseLead(baseData.power), coin: dealcalcParseLead(baseData.coin),
+        coinCount: Math.max(1, Number(baseData.coinCount) || 1),
+        coinEffects: baseData.coinEffects || null,
+      });
+    }
+    specialsAll.filter(s => s.attachTo === key).forEach((s, si) => {
+      const keysLen = s.coinEffects ? Object.keys(s.coinEffects).length : 0;
+      out.push({
+        id: `${key}|special${si}`, slotKey: key, tag: `${label} 강화`, kind: "special",
+        name: s.name, sin: s.sin,
+        power: dealcalcParseLead(s.power), coin: dealcalcParseLead(s.coin),
+        coinCount: Math.max(1, Number(s.coinCount) || 0, keysLen),
+        coinEffects: s.coinEffects || null, refNote: s.refNote,
+      });
+    });
   });
-  if (detail.defense && detail.defense.name){
-    const d = detail.defense;
-    out.push({key: "defense", label: `수비 · ${d.name}`, power: Number(d.power)||0, coin: dealcalcParseLead(d.coin), coinCount: Number(d.coinCount)||1});
-  }
   return out;
 }
-function dealcalcPopulateSinners(){
-  const sel = document.getElementById("dcSinner");
-  sel.innerHTML = SINNER_ORDER.map(s => `<option value="${escapeHTML(s)}">${escapeHTML(s)}</option>`).join("");
+function dealcalcSelectedOption(){
+  return (dealcalcState.skillOpts || []).find(o => o.id === dealcalcState.selId) || null;
 }
-function dealcalcPopulateIdentities(){
-  const sinner = document.getElementById("dcSinner").value;
-  const sel = document.getElementById("dcIdentity");
-  const identities = DATA.filter(d => d.sinner === sinner);
-  sel.innerHTML = identities.map(d => `<option value="${escapeHTML(d.identity)}">${escapeHTML(d.identity)}</option>`).join("");
-}
-function dealcalcPopulateSkills(){
-  const sinner = document.getElementById("dcSinner").value;
-  const identity = document.getElementById("dcIdentity").value;
-  const opts = dealcalcSkillOptions(sinner, identity);
-  const sel = document.getElementById("dcSkill");
+function dealcalcRenderSkillBar(){
+  const opts = dealcalcBuildSkillOptions(dealcalcState.sinner, dealcalcState.identity);
+  dealcalcState.skillOpts = opts;
+  const bar = document.getElementById("dcSkillBar");
   if (!opts.length){
-    sel.innerHTML = `<option value="">(스킬 정보 없음 — 직접 입력)</option>`;
+    bar.innerHTML = `<span class="dealcalc-note">스킬 정보 없음</span>`;
+    dealcalcState.selId = null;
     return;
   }
-  sel.innerHTML = opts.map(o => `<option value="${o.key}">${escapeHTML(o.label)}</option>`).join("");
-  dealcalcApplySkillToFields();
+  if (!opts.some(o => o.id === dealcalcState.selId)) dealcalcState.selId = opts[0].id;
+  bar.innerHTML = opts.map(o => `
+    <button type="button" class="dealcalc-skill-slot${o.id === dealcalcState.selId ? " is-current" : ""}" data-id="${escapeHTML(o.id)}">
+      <span class="dealcalc-skill-slot-tag">${escapeHTML(o.tag)}</span>
+      <span class="dealcalc-skill-slot-name">${escapeHTML(o.name)}</span>
+    </button>`).join("");
+  bar.querySelectorAll("[data-id]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      dealcalcState.selId = btn.dataset.id;
+      dealcalcRenderSkillBar();
+      dealcalcRenderSkillDetail();
+      renderDealCalcView();
+    });
+  });
 }
-function dealcalcApplySkillToFields(){
-  const sinner = document.getElementById("dcSinner").value;
-  const identity = document.getElementById("dcIdentity").value;
-  const skillKey = document.getElementById("dcSkill").value;
-  const opts = dealcalcSkillOptions(sinner, identity);
-  const found = opts.find(o => o.key === skillKey);
-  if (found){
-    document.getElementById("dcPower").value = found.power;
-    document.getElementById("dcCoinPower").value = found.coin;
-    document.getElementById("dcCoinCount").value = found.coinCount;
+function dealcalcRenderSkillDetail(){
+  const box = document.getElementById("dcSkillDetail");
+  const o = dealcalcSelectedOption();
+  if (!o){ box.innerHTML = `<span class="dealcalc-note">스킬을 선택하세요</span>`; return; }
+  const sinIcon = o.sin ? (SIN_ICON_DATA[o.sin] || "") : "";
+  const rows = [];
+  rows.push(`<div class="dealcalc-skill-detail-head">${sinIcon ? `<img src="${sinIcon}" width="16" height="16" alt="">` : ""}${escapeHTML(o.name)}${o.refNote ? ` <span class="dealcalc-note">(${escapeHTML(o.refNote)})</span>` : ""}</div>`);
+  rows.push(`<div class="dealcalc-skill-detail-stats"><span>위력 ${o.power}</span><span>코인위력 ${o.coin >= 0 ? "+" : ""}${o.coin}</span><span>코인 ${o.coinCount}개</span></div>`);
+  if (o.coinEffects && Object.keys(o.coinEffects).length){
+    const lines = Object.keys(o.coinEffects).sort((a, b) => Number(a) - Number(b))
+      .map(k => `<div>${k}: ${linkifyKeywords(o.coinEffects[k])}</div>`);
+    rows.push(`<div class="dealcalc-skill-detail-coins">${lines.join("")}</div>`);
   }
-  const sin = dealcalcSkillSin(sinner, identity, skillKey);
-  document.getElementById("dcGiftHint").textContent = sin
-    ? `이 스킬의 속성: ${sin} (적 선택 시 죄종 내성 자동 반영)`
-    : "";
-  dealcalcApplyEnemyAutofill();
+  box.innerHTML = rows.join("");
+}
+function dealcalcRenderIdentityGrid(){
+  const grid = document.getElementById("dcIdentityGrid");
+  const list = DATA.filter(d => d.sinner === dealcalcState.sinner);
+  grid.innerHTML = list.map(d => `
+    <button type="button" class="picker-card${d.identity === dealcalcState.identity ? " is-current" : ""}" data-identity="${escapeHTML(d.identity)}" title="${escapeHTML(d.identity)}">
+      <img src="${portraitSrc(d)}" alt="${escapeHTML(d.identity)}" loading="lazy">
+      <span class="picker-card-rarity">${escapeHTML(d.rarity)}</span>
+    </button>`).join("");
+  grid.querySelectorAll("[data-identity]").forEach(btn => {
+    btn.addEventListener("click", () => dealcalcSelectIdentity(btn.dataset.identity));
+  });
+}
+function dealcalcSelectIdentity(identity){
+  if (identity === dealcalcState.identity) return;
+  dealcalcState.identity = identity;
+  dealcalcState.selId = null;
+  dealcalcRenderIdentityGrid();
+  dealcalcRenderSkillBar();
+  dealcalcRenderSkillDetail();
+  renderDealCalcView();
+}
+function dealcalcRenderSinnerSwitch(){
+  const wrap = document.getElementById("dcSinnerSwitch");
+  wrap.innerHTML = SINNER_ORDER.map(sn => `
+    <button type="button" class="picker-sinner-btn${sn === dealcalcState.sinner ? " is-current" : ""}" data-sinner="${escapeHTML(sn)}" title="${escapeHTML(sn)}">
+      <img src="${SINNER_ICON_DATA[sn] || ""}" alt="${escapeHTML(sn)}" loading="lazy">
+    </button>`).join("");
+  wrap.querySelectorAll("[data-sinner]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.sinner === dealcalcState.sinner) return;
+      dealcalcState.sinner = btn.dataset.sinner;
+      const first = DATA.find(d => d.sinner === dealcalcState.sinner);
+      dealcalcState.identity = first ? first.identity : null;
+      dealcalcState.selId = null;
+      dealcalcRenderSinnerSwitch();
+      dealcalcRenderIdentityGrid();
+      dealcalcRenderSkillBar();
+      dealcalcRenderSkillDetail();
+      renderDealCalcView();
+    });
+  });
+}
+function dealcalcRenderSelfKwGrid(){
+  const grid = document.getElementById("dcSelfKwGrid");
+  grid.innerHTML = DEALCALC_SELF_KEYWORDS.map(kw => `
+    <label class="dealcalc-kw-item" title="${escapeHTML(kw)} 스택 (참고용 — 데미지 반영은 기타 보정치에 수동 계산)">
+      ${KEYWORD_ICON_DATA[kw] ? `<img src="${KEYWORD_ICON_DATA[kw]}" alt="">` : ""}
+      <span>${escapeHTML(kw)}</span>
+      <input type="number" min="0" step="1" value="0" data-kw="${escapeHTML(kw)}">
+    </label>`).join("");
+  grid.querySelectorAll("[data-kw]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      dealcalcState.selfKw[inp.dataset.kw] = Math.max(0, Number(inp.value) || 0);
+    });
+  });
 }
 function dealcalcPopulateAttackType(){
   const sel = document.getElementById("dcAttackType");
   sel.innerHTML = `<option value="">(적 속성내성 자동입력용, 선택)</option>` +
     ATTACK_TYPE_KW.map(t => `<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("");
 }
-function dealcalcPopulateEnemies(){
-  const sel = document.getElementById("dcEnemy");
-  const list = ENEMY_DATA
-    .map((e, idx) => ({e, idx}))
-    .filter(({e}) => e.hp != null)
-    .sort((a, b) => (a.e.chapterNum - b.e.chapterNum) || a.e.name.localeCompare(b.e.name, "ko"));
-  sel.innerHTML = `<option value="">직접 입력</option>` +
-    list.map(({e, idx}) => `<option value="${idx}">${escapeHTML(e.chapter)} · ${escapeHTML(e.name)}</option>`).join("");
+function dealcalcEnemyCandidates(){
+  return ENEMY_DATA.map((e, idx) => ({e, idx})).filter(({e}) => e.hp != null);
 }
-function dealcalcApplyEnemyAutofill(){
-  const idx = document.getElementById("dcEnemy").value;
-  if (idx === "") return;
-  const e = ENEMY_DATA[Number(idx)];
-  if (!e) return;
-  if (e.defense != null) document.getElementById("dcDefLevel").value = dealcalcParseLead(e.defense);
-  const sinner = document.getElementById("dcSinner").value;
-  const identity = document.getElementById("dcIdentity").value;
-  const skillKey = document.getElementById("dcSkill").value;
-  const sin = dealcalcSkillSin(sinner, identity, skillKey);
-  if (sin && e.resistances && e.resistances[sin] && DEALCALC_TIER_MULT[e.resistances[sin]] != null){
-    document.getElementById("dcSinRes").value = e.resistances[sin];
+function dealcalcRenderEnemyList(){
+  const q = document.getElementById("dcEnemySearch").value.trim().toLowerCase();
+  const list = dealcalcEnemyCandidates()
+    .filter(({e}) => !q || e.name.toLowerCase().includes(q))
+    .sort((a, b) => (a.e.chapterNum - b.e.chapterNum) || a.e.name.localeCompare(b.e.name, "ko"))
+    .slice(0, 60);
+  const box = document.getElementById("dcEnemyList");
+  box.innerHTML = list.map(({e, idx}) =>
+    `<button type="button" class="dealcalc-enemy-chip${dealcalcState.enemyIdxs.has(idx) ? " is-picked" : ""}" data-idx="${idx}">${escapeHTML(e.chapter)} · ${escapeHTML(e.name)}</button>`
+  ).join("");
+  box.querySelectorAll("[data-idx]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.idx);
+      dealcalcState.enemyIdxs.has(idx) ? dealcalcState.enemyIdxs.delete(idx) : dealcalcState.enemyIdxs.add(idx);
+      dealcalcRenderEnemyList();
+      dealcalcRenderEnemyPicked();
+      renderDealCalcView();
+    });
+  });
+}
+function dealcalcRenderEnemyPicked(){
+  const box = document.getElementById("dcEnemyPicked");
+  document.getElementById("dcManualTarget").hidden = dealcalcState.enemyIdxs.size > 0;
+  if (!dealcalcState.enemyIdxs.size){
+    box.textContent = "선택된 적 없음 — 아래 방어 레벨·내성을 직접 입력합니다.";
+    return;
   }
-  const atype = document.getElementById("dcAttackType").value;
-  if (atype && e.resistances && e.resistances[atype] && DEALCALC_TIER_MULT[e.resistances[atype]] != null){
-    document.getElementById("dcTypeRes").value = e.resistances[atype];
+  box.innerHTML = "선택됨: " + [...dealcalcState.enemyIdxs].map(idx => {
+    const e = ENEMY_DATA[idx];
+    return `<button type="button" class="dealcalc-enemy-chip is-picked" data-idx="${idx}">${escapeHTML(e.name)} ✕</button>`;
+  }).join(" ");
+  box.querySelectorAll("[data-idx]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      dealcalcState.enemyIdxs.delete(Number(btn.dataset.idx));
+      dealcalcRenderEnemyList();
+      dealcalcRenderEnemyPicked();
+      renderDealCalcView();
+    });
+  });
+}
+function dealcalcTargetsFor(sin, atype){
+  if (dealcalcState.enemyIdxs.size){
+    return [...dealcalcState.enemyIdxs].map(idx => {
+      const e = ENEMY_DATA[idx];
+      const defLevel = e.defense != null ? dealcalcParseLead(e.defense) : 0;
+      const sinTier = sin && e.resistances && e.resistances[sin] && DEALCALC_TIER_MULT[e.resistances[sin]] != null ? e.resistances[sin] : "보통";
+      const typeTier = atype && e.resistances && e.resistances[atype] && DEALCALC_TIER_MULT[e.resistances[atype]] != null ? e.resistances[atype] : "보통";
+      return {label: `${e.chapter} · ${e.name}`, defLevel, sinMult: DEALCALC_TIER_MULT[sinTier], typeMult: DEALCALC_TIER_MULT[typeTier]};
+    });
   }
-  dealcalcSyncCustomInputs();
+  return [{
+    label: "직접 입력",
+    defLevel: Number(document.getElementById("dcDefLevel").value) || 0,
+    sinMult: dealcalcTierValue("dcSinRes", "dcSinResCustom"),
+    typeMult: dealcalcTierValue("dcTypeRes", "dcTypeResCustom"),
+  }];
 }
 function dealcalcScenario(power, coinPower, coinCount, clashRounds, Ms0, Md){
   const remaining = Math.max(0, coinCount - clashRounds);
@@ -6175,87 +6286,96 @@ function renderDealCalcView(){
   document.getElementById("dealCalcModeLabel").textContent = bug ? "버그판" : "크리에이티브";
   dealcalcRefreshTierSelects();
 
-  const power = Number(document.getElementById("dcPower").value) || 0;
-  const coinPower = Number(document.getElementById("dcCoinPower").value) || 0;
-  const coinCount = Math.max(1, Math.round(Number(document.getElementById("dcCoinCount").value) || 1));
+  const o = dealcalcSelectedOption();
+  const result = document.getElementById("dealCalcResult");
+  if (!o){
+    result.innerHTML = `<div class="dealcalc-note">먼저 수감자·인격·스킬을 선택하세요.</div>`;
+    return;
+  }
+  const power = o.power, coinPower = o.coin, coinCount = o.coinCount, sin = o.sin;
+
+  const level = Math.max(1, Number(document.getElementById("dcLevel").value) || 60);
+  const atkBonus = Number(document.getElementById("dcAtkLevelBonus").value) || 0;
   const ownedCost = Math.max(0, Number(document.getElementById("dcOwnedCost").value) || 0);
   const wealthGift = document.getElementById("dcWealthGift").checked;
   const wealthBonus = wealthGift ? Math.min(20, Math.floor(ownedCost / 500)) : 0;
-  const atkLevel = (Number(document.getElementById("dcAtkLevel").value) || 0) + wealthBonus;
-  const defLevel = Number(document.getElementById("dcDefLevel").value) || 0;
+  const atkLevel = level + atkBonus + wealthBonus;
+
   const clashRounds = Math.max(0, Math.round(Number(document.getElementById("dcClashRounds").value) || 0));
   const crit = document.getElementById("dcCrit").checked;
   const staggerB = Number(document.getElementById("dcStagger").value) || 0;
-
-  const A = dealcalcA(dealcalcTierValue("dcSinRes", "dcSinResCustom"));
-  const typeMult = dealcalcTierValue("dcTypeRes", "dcTypeResCustom");
-  const B = staggerB > 0 ? staggerB : dealcalcA(typeMult);
-  const C = dealcalcLevelAdv(atkLevel, defLevel);
-  const E = crit ? 0.2 : 0;
-  const Ms0 = A + B + C + E;
+  const atype = document.getElementById("dcAttackType").value;
 
   let selfPct = Number(document.getElementById("dcSelfDmgPct").value) || 0;
   let vulnPct = Number(document.getElementById("dcTargetVulnPct").value) || 0;
   if (!bug){ selfPct = Math.max(-100, Math.min(100, selfPct)); vulnPct = Math.max(-100, Math.min(100, vulnPct)); }
   const manualMs = Number(document.getElementById("dcManualMs").value) || 0;
   const manualMd = Number(document.getElementById("dcManualMd").value) || 0;
+  const E = crit ? 0.2 : 0;
   const Md = (selfPct / 100) + (vulnPct / 100) + manualMd;
 
-  const oneSided = dealcalcScenario(power, coinPower, coinCount, 0, Ms0 + manualMs, Md);
-  const clashResult = clashRounds > 0 ? dealcalcScenario(power, coinPower, coinCount, clashRounds, Ms0 + manualMs, Md) : null;
+  const targets = dealcalcTargetsFor(sin, atype);
+  const blocks = [];
+  targets.forEach(t => {
+    const A = dealcalcA(t.sinMult);
+    const B = staggerB > 0 ? staggerB : dealcalcA(t.typeMult);
+    const C = dealcalcLevelAdv(atkLevel, t.defLevel);
+    const Ms0 = A + B + C + E + manualMs;
 
-  const higher = clashResult && clashResult.dmg > oneSided.dmg ? "clash" : "one";
-  const rows = [];
-  rows.push(`<div class="dealcalc-scenario-grid">`);
-  rows.push(`<div class="dealcalc-scenario${higher === "one" && clashResult ? " is-higher" : ""}">
-    <div class="dealcalc-scenario-label">일방 공격 (합 없음)</div>
-    <div class="dealcalc-scenario-value">${oneSided.dmg.toLocaleString()}</div>
-  </div>`);
-  if (clashResult){
-    rows.push(`<div class="dealcalc-scenario${higher === "clash" ? " is-higher" : ""}">
-      <div class="dealcalc-scenario-label">합 ${clashRounds}라운드 완승 후</div>
-      <div class="dealcalc-scenario-value">${clashResult.dmg.toLocaleString()}</div>
-    </div>`);
-  } else {
-    rows.push(`<div class="dealcalc-scenario">
-      <div class="dealcalc-scenario-label">합 라운드 수를 입력하면 비교됩니다</div>
-      <div class="dealcalc-scenario-value">—</div>
-    </div>`);
-  }
-  rows.push(`</div>`);
+    const oneSided = dealcalcScenario(power, coinPower, coinCount, 0, Ms0, Md);
+    const clashResult = clashRounds > 0 ? dealcalcScenario(power, coinPower, coinCount, clashRounds, Ms0, Md) : null;
+    const higher = clashResult && clashResult.dmg > oneSided.dmg ? "clash" : "one";
 
-  const shown = clashResult || oneSided;
-  rows.push(`<div class="dealcalc-breakdown">`);
-  rows.push(`<div class="dealcalc-breakdown-row"><span>코인 위력 (일방 기준, 전부 앞면)</span><span>${oneSided.coinTotal.toLocaleString(undefined,{maximumFractionDigits:1})}</span></div>`);
-  if (clashResult) rows.push(`<div class="dealcalc-breakdown-row"><span>코인 위력 (합 완승 후 남는 코인 ${clashResult.remaining}개 기준)</span><span>${clashResult.coinTotal.toLocaleString(undefined,{maximumFractionDigits:1})}</span></div>`);
-  rows.push(`<div class="dealcalc-breakdown-row"><span>A 죄종내성</span><span>${A.toFixed(3)}</span></div>`);
-  rows.push(`<div class="dealcalc-breakdown-row"><span>B 속성내성${staggerB>0?" (흐트러짐 적용)":""}</span><span>${B.toFixed(3)}</span></div>`);
-  rows.push(`<div class="dealcalc-breakdown-row"><span>C 레벨차(공격${atkLevel}${wealthBonus?` = 입력값+부 보너스${wealthBonus}`:""}-방어${defLevel})</span><span>${C.toFixed(3)}</span></div>`);
-  rows.push(`<div class="dealcalc-breakdown-row"><span>D 합 보너스</span><span>${(shown.D||0).toFixed(3)}</span></div>`);
-  rows.push(`<div class="dealcalc-breakdown-row"><span>E 치명타</span><span>${E.toFixed(3)}</span></div>`);
-  rows.push(`<div class="dealcalc-breakdown-row"><span>기타 보정치(Ms)</span><span>${manualMs.toFixed(3)}</span></div>`);
-  rows.push(`<div class="dealcalc-breakdown-row"><span>Ms 합계 → 배율</span><span>${shown.Ms.toFixed(3)} → ×${shown.msFactor.toFixed(3)}</span></div>`);
-  rows.push(`<div class="dealcalc-breakdown-row"><span>G 자신 피해량 증감</span><span>${(selfPct/100).toFixed(3)}</span></div>`);
-  rows.push(`<div class="dealcalc-breakdown-row"><span>H 대상 취약·보호</span><span>${(vulnPct/100).toFixed(3)}</span></div>`);
-  rows.push(`<div class="dealcalc-breakdown-row"><span>기타 보정치(Md)</span><span>${manualMd.toFixed(3)}</span></div>`);
-  rows.push(`<div class="dealcalc-breakdown-row"><span>Md 합계 → 배율</span><span>${Md.toFixed(3)} → ×${shown.mdFactor.toFixed(3)}</span></div>`);
-  rows.push(`</div>`);
-  if (clashRounds >= coinCount){
-    rows.push(`<div class="dealcalc-warn">상대 코인 수가 내 코인 수 이상이면 합에서 이겨도 남는 코인이 없어 데미지가 들어가지 않습니다.</div>`);
-  }
+    if (targets.length > 1) blocks.push(`<div class="dealcalc-result-target-label">${escapeHTML(t.label)}</div>`);
+    blocks.push(`<div class="dealcalc-scenario-grid">`);
+    blocks.push(`<div class="dealcalc-scenario${higher === "one" && clashResult ? " is-higher" : ""}">
+      <div class="dealcalc-scenario-label">일방 공격 (합 없음)</div>
+      <div class="dealcalc-scenario-value">${oneSided.dmg.toLocaleString()}</div>
+    </div>`);
+    if (clashResult){
+      blocks.push(`<div class="dealcalc-scenario${higher === "clash" ? " is-higher" : ""}">
+        <div class="dealcalc-scenario-label">합 ${clashRounds}라운드 완승 후</div>
+        <div class="dealcalc-scenario-value">${clashResult.dmg.toLocaleString()}</div>
+      </div>`);
+    } else {
+      blocks.push(`<div class="dealcalc-scenario">
+        <div class="dealcalc-scenario-label">합 라운드 수를 입력하면 비교됩니다</div>
+        <div class="dealcalc-scenario-value">—</div>
+      </div>`);
+    }
+    blocks.push(`</div>`);
+    if (clashResult && clashRounds >= coinCount){
+      blocks.push(`<div class="dealcalc-warn">상대 코인 수가 내 코인 수 이상 — 합에서 이겨도 남는 코인이 없어 데미지가 들어가지 않습니다.</div>`);
+    }
+
+    const shown = clashResult || oneSided;
+    blocks.push(`<details class="dealcalc-advanced"><summary>상세 계산 보기</summary>`);
+    blocks.push(`<div class="dealcalc-breakdown">`);
+    blocks.push(`<div class="dealcalc-breakdown-row"><span>코인 위력 (일방 기준, 전부 앞면)</span><span>${oneSided.coinTotal.toLocaleString(undefined,{maximumFractionDigits:1})}</span></div>`);
+    if (clashResult) blocks.push(`<div class="dealcalc-breakdown-row"><span>코인 위력 (합 완승 후 남는 코인 ${clashResult.remaining}개 기준)</span><span>${clashResult.coinTotal.toLocaleString(undefined,{maximumFractionDigits:1})}</span></div>`);
+    blocks.push(`<div class="dealcalc-breakdown-row"><span>A 죄종내성</span><span>${A.toFixed(3)}</span></div>`);
+    blocks.push(`<div class="dealcalc-breakdown-row"><span>B 속성내성${staggerB>0?" (흐트러짐 적용)":""}</span><span>${B.toFixed(3)}</span></div>`);
+    blocks.push(`<div class="dealcalc-breakdown-row"><span>C 레벨차(공격${atkLevel}-방어${t.defLevel})</span><span>${C.toFixed(3)}</span></div>`);
+    blocks.push(`<div class="dealcalc-breakdown-row"><span>D 합 보너스</span><span>${(shown.D||0).toFixed(3)}</span></div>`);
+    blocks.push(`<div class="dealcalc-breakdown-row"><span>E 치명타</span><span>${E.toFixed(3)}</span></div>`);
+    blocks.push(`<div class="dealcalc-breakdown-row"><span>기타 보정치(Ms)</span><span>${manualMs.toFixed(3)}</span></div>`);
+    blocks.push(`<div class="dealcalc-breakdown-row"><span>Ms 합계 → 배율</span><span>${shown.Ms.toFixed(3)} → ×${shown.msFactor.toFixed(3)}</span></div>`);
+    blocks.push(`<div class="dealcalc-breakdown-row"><span>G 자신 피해량 증감</span><span>${(selfPct/100).toFixed(3)}</span></div>`);
+    blocks.push(`<div class="dealcalc-breakdown-row"><span>H 대상 취약·보호</span><span>${(vulnPct/100).toFixed(3)}</span></div>`);
+    blocks.push(`<div class="dealcalc-breakdown-row"><span>기타 보정치(Md)</span><span>${manualMd.toFixed(3)}</span></div>`);
+    blocks.push(`<div class="dealcalc-breakdown-row"><span>Md 합계 → 배율</span><span>${Md.toFixed(3)} → ×${shown.mdFactor.toFixed(3)}</span></div>`);
+    blocks.push(`</div></details>`);
+  });
   if (!bug){
-    rows.push(`<div class="dealcalc-note" style="margin-top:8px;">크리에이티브 모드: 내성 배율은 실제 게임에 존재하는 5단계로 제한되고, 자신 피해량 증감·대상 취약/보호는 ±100%로 제한됩니다. 버그판으로 전환하면 임의 배율·무제한 수치를 입력할 수 있습니다.</div>`);
+    blocks.push(`<div class="dealcalc-note" style="margin-top:12px;">크리에이티브 모드: 내성 배율은 실제 게임에 존재하는 5단계로 제한되고, 자신 피해량 증감·대상 취약/보호는 ±100%로 제한됩니다. 버그판으로 전환하면 임의 배율·무제한 수치를 입력할 수 있습니다.</div>`);
   }
-  document.getElementById("dealCalcResult").innerHTML = rows.join("");
+  result.innerHTML = blocks.join("");
 }
 function dealcalcWireInputs(){
-  document.getElementById("dcSinner").addEventListener("change", () => { dealcalcPopulateIdentities(); dealcalcPopulateSkills(); renderDealCalcView(); });
-  document.getElementById("dcIdentity").addEventListener("change", () => { dealcalcPopulateSkills(); renderDealCalcView(); });
-  document.getElementById("dcSkill").addEventListener("change", () => { dealcalcApplySkillToFields(); renderDealCalcView(); });
-  document.getElementById("dcEnemy").addEventListener("change", () => { dealcalcApplyEnemyAutofill(); renderDealCalcView(); });
-  document.getElementById("dcAttackType").addEventListener("change", () => { dealcalcApplyEnemyAutofill(); renderDealCalcView(); });
+  document.getElementById("dcEnemySearch").addEventListener("input", dealcalcRenderEnemyList);
+  document.getElementById("dcAttackType").addEventListener("change", renderDealCalcView);
   document.getElementById("dealCalcBugMode").addEventListener("change", renderDealCalcView);
-  ["dcPower","dcCoinPower","dcCoinCount","dcAtkLevel","dcCrit","dcClashRounds","dcOwnedCost","dcWealthGift",
+  ["dcLevel","dcAtkLevelBonus","dcCrit","dcClashRounds","dcOwnedCost","dcWealthGift",
    "dcSelfDmgPct","dcManualMs","dcManualMd","dcDefLevel","dcSinRes","dcSinResCustom","dcTypeRes",
    "dcTypeResCustom","dcStagger","dcTargetVulnPct"].forEach(id => {
     const el = document.getElementById(id);
@@ -6263,11 +6383,16 @@ function dealcalcWireInputs(){
     el.addEventListener("change", () => { dealcalcSyncCustomInputs(); renderDealCalcView(); });
   });
 }
-dealcalcPopulateSinners();
-dealcalcPopulateIdentities();
-dealcalcPopulateSkills();
+dealcalcState.sinner = SINNER_ORDER[0];
+(() => { const first = DATA.find(d => d.sinner === dealcalcState.sinner); dealcalcState.identity = first ? first.identity : null; })();
+dealcalcRenderSinnerSwitch();
+dealcalcRenderIdentityGrid();
+dealcalcRenderSkillBar();
+dealcalcRenderSkillDetail();
+dealcalcRenderSelfKwGrid();
 dealcalcPopulateAttackType();
-dealcalcPopulateEnemies();
+dealcalcRenderEnemyList();
+dealcalcRenderEnemyPicked();
 dealcalcWireInputs();
 
 /* ---- 이름만 검색 토글 (설정이 아니라 검색창 옆에 노출, 자주 켜고 끌 것으로 예상) ---- */

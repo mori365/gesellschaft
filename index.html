@@ -270,7 +270,7 @@
     <div class="dealcalc-header">
       <div>
         <h2 class="dealcalc-title">딜뽕 계산기</h2>
-        <p class="dealcalc-hint">지정한 스킬 한 방(합 없는 일방 공격 / 합을 완전히 이기고 넘어가는 경우)의 최대 데미지를 계산합니다. 게임 데미지 공식을 기반으로 하며, 개별 기프트·패시브의 세부 조건은 대부분 "기타 보정치"에 수동으로 반영해야 합니다.</p>
+        <p class="dealcalc-hint">지정한 스킬 한 방(합 없는 일방 공격 / 합을 완전히 이기고 넘어가는 경우)의 최대 데미지를 계산합니다.</p>
       </div>
       <label class="sync-toggle dealcalc-mode-toggle" id="dealCalcModeToggle">
         <input type="checkbox" id="dealCalcBugMode">
@@ -282,86 +282,80 @@
     <div class="dealcalc-grid">
       <div class="dealcalc-col">
         <h3>공격 측</h3>
-        <div class="dealcalc-row">
-          <label>수감자</label>
-          <select id="dcSinner"></select>
+        <div class="dealcalc-sinner-switch" id="dcSinnerSwitch"></div>
+        <div class="dealcalc-identity-grid" id="dcIdentityGrid"></div>
+
+        <div class="dealcalc-skillbar" id="dcSkillBar"></div>
+        <div class="dealcalc-skill-detail" id="dcSkillDetail"></div>
+
+        <div class="dealcalc-row-3">
+          <div><label>인격 레벨</label><input type="number" id="dcLevel" value="60" min="1" max="65" step="1"></div>
+          <div><label title="낮은 동기화 단계별 수치는 아직 미지원 — 항상 4단계(최대) 수치로 계산됩니다">동기화</label><select id="dcSync"><option value="4" selected>4단계 (최대)</option></select></div>
+          <div><label title="포이즈 등으로 치명타 조건을 만족한 경우 (기본 +20%)">치명타</label>
+            <label class="sync-toggle dealcalc-inline-toggle"><input type="checkbox" id="dcCrit"><span class="toggle-track"></span></label>
+          </div>
         </div>
         <div class="dealcalc-row">
-          <label>인격</label>
-          <select id="dcIdentity"></select>
-        </div>
-        <div class="dealcalc-row">
-          <label>스킬</label>
-          <select id="dcSkill"></select>
-        </div>
-        <div class="dealcalc-row dealcalc-row-3">
-          <label>기본 위력</label>
-          <input type="number" id="dcPower" step="1">
-          <label>코인 위력</label>
-          <input type="number" id="dcCoinPower" step="1">
-          <label>코인 수</label>
-          <input type="number" id="dcCoinCount" step="1" min="1">
-        </div>
-        <div class="dealcalc-row">
-          <label>공격 유형</label>
-          <select id="dcAttackType"><option value="">(적 속성내성 자동입력용, 선택)</option></select>
-        </div>
-        <div class="dealcalc-row">
-          <label>공격 레벨</label>
-          <input type="number" id="dcAtkLevel" value="0" step="1">
-        </div>
-        <div class="dealcalc-row">
-          <label title="포이즈 등으로 치명타 조건을 만족한 경우 (기본 +20%)">치명타 적용</label>
-          <input type="checkbox" id="dcCrit">
+          <label title="레벨로 정해지는 기본 공격 레벨에 추가로 더할 값 (버프/디버프 등)">추가 공격 레벨</label>
+          <input type="number" id="dcAtkLevelBonus" value="0" step="1">
         </div>
         <div class="dealcalc-row">
           <label title="합에서 몇 라운드를 이기고 넘어가는지 (상대 스킬 코인 수). 0이면 일방 공격만 계산">상대 코인 수 (합 라운드)</label>
           <input type="number" id="dcClashRounds" value="0" min="0" step="1">
         </div>
-        <div class="dealcalc-row">
-          <label title="자동 반영: '부' 기프트 체크 시 보유 코스트 500당 전원 공격 레벨 +1 (최대 20)을 공격 레벨에 더해서 계산">보유 코스트</label>
-          <input type="number" id="dcOwnedCost" value="0" min="0" step="100">
-        </div>
-        <div class="dealcalc-row">
-          <label>'부' 기프트 장착</label>
-          <input type="checkbox" id="dcWealthGift">
-        </div>
-        <div class="dealcalc-row">
-          <label title="자신의 '피해량 증가/감소' 계열 스킬·패시브·기프트 효과 총합 (Md의 G)">자신 피해량 증감(%)</label>
-          <input type="number" id="dcSelfDmgPct" value="0" step="1">
-        </div>
-        <div class="dealcalc-row">
-          <label title="공식에 없는 세부 효과(기프트·특수 패시브 등)를 정적 보정치(Ms)에 직접 더할 때 사용">기타 보정치 · 정적(Ms)</label>
-          <input type="number" id="dcManualMs" value="0" step="0.01">
-        </div>
-        <div class="dealcalc-row">
-          <label title="공식에 없는 세부 효과를 동적 보정치(Md)에 직접 더할 때 사용">기타 보정치 · 동적(Md)</label>
-          <input type="number" id="dcManualMd" value="0" step="0.01">
-        </div>
-        <div class="dealcalc-row">
-          <span id="dcGiftHint" class="dealcalc-note"></span>
-        </div>
+
+        <h4 class="dealcalc-subhead">자신 키워드 스택</h4>
+        <div class="dealcalc-kw-grid" id="dcSelfKwGrid"></div>
+
+        <details class="dealcalc-advanced">
+          <summary>기타 보정치 (기프트·패시브 등 수동 반영)</summary>
+          <div class="dealcalc-row">
+            <label title="자동 반영: 체크 시 보유 코스트 500당 전원 공격 레벨 +1 (최대 20)을 공격 레벨에 더해서 계산">'부' 기프트 장착</label>
+            <input type="checkbox" id="dcWealthGift">
+            <input type="number" id="dcOwnedCost" value="0" min="0" step="100" placeholder="보유 코스트">
+          </div>
+          <div class="dealcalc-row">
+            <label title="자신의 '피해량 증가/감소' 계열 스킬·패시브·기프트 효과 총합">자신 피해량 증감(%)</label>
+            <input type="number" id="dcSelfDmgPct" value="0" step="1">
+          </div>
+          <div class="dealcalc-row">
+            <label title="공식에 없는 세부 효과를 정적 보정치(Ms)에 직접 더할 때 사용">기타 보정치 · 정적(Ms)</label>
+            <input type="number" id="dcManualMs" value="0" step="0.01">
+          </div>
+          <div class="dealcalc-row">
+            <label title="공식에 없는 세부 효과를 동적 보정치(Md)에 직접 더할 때 사용">기타 보정치 · 동적(Md)</label>
+            <input type="number" id="dcManualMd" value="0" step="0.01">
+          </div>
+        </details>
       </div>
 
       <div class="dealcalc-col">
         <h3>상대 측</h3>
         <div class="dealcalc-row">
-          <label>적 선택 (선택)</label>
-          <select id="dcEnemy"><option value="">직접 입력</option></select>
+          <label>공격 유형</label>
+          <select id="dcAttackType"><option value="">(적 속성내성 자동입력용, 선택)</option></select>
         </div>
         <div class="dealcalc-row">
-          <label>방어 레벨</label>
-          <input type="number" id="dcDefLevel" value="0" step="1">
+          <input type="text" id="dcEnemySearch" placeholder="적 이름 검색 (여러 명 선택 가능 — 가중치 공격용)">
         </div>
-        <div class="dealcalc-row">
-          <label>죄종 내성</label>
-          <select id="dcSinRes"></select>
-          <input type="number" id="dcSinResCustom" step="0.05" placeholder="배율" hidden>
-        </div>
-        <div class="dealcalc-row">
-          <label>공격 속성 내성</label>
-          <select id="dcTypeRes"></select>
-          <input type="number" id="dcTypeResCustom" step="0.05" placeholder="배율" hidden>
+        <div class="dealcalc-enemy-list" id="dcEnemyList"></div>
+        <div class="dealcalc-note" id="dcEnemyPicked"></div>
+
+        <div id="dcManualTarget">
+          <div class="dealcalc-row">
+            <label>방어 레벨</label>
+            <input type="number" id="dcDefLevel" value="0" step="1">
+          </div>
+          <div class="dealcalc-row">
+            <label>죄종 내성</label>
+            <select id="dcSinRes"></select>
+            <input type="number" id="dcSinResCustom" step="0.05" placeholder="배율" hidden>
+          </div>
+          <div class="dealcalc-row">
+            <label>공격 속성 내성</label>
+            <select id="dcTypeRes"></select>
+            <input type="number" id="dcTypeResCustom" step="0.05" placeholder="배율" hidden>
+          </div>
         </div>
         <div class="dealcalc-row">
           <label>흐트러짐 상태</label>
@@ -373,7 +367,7 @@
           </select>
         </div>
         <div class="dealcalc-row">
-          <label title="대상의 '취약/보호' 계열 상태이상 총합 (Md의 H)">대상 취약·보호(%)</label>
+          <label title="대상의 '취약/보호' 계열 상태이상 총합">대상 취약·보호(%)</label>
           <input type="number" id="dcTargetVulnPct" value="0" step="1">
         </div>
       </div>
