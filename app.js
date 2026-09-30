@@ -6045,7 +6045,26 @@ document.getElementById("enemyResetAll").addEventListener("click", () => {
    기본위력·코인위력·코인수·공격레벨은 인격/레벨 선택에서 항상 파생시키며 사용자가 직접 입력하지 않는다. */
 const DEALCALC_TIER_MULT = {"약점":2.0, "취약":1.5, "보통":1.0, "견딤":0.75, "내성":0.5};
 const DEALCALC_SELF_KEYWORDS = ["화상","출혈","진동","파열","침잠","충전","호흡"];
-const dealcalcState = { sinner: null, identity: null, selId: null, skillOpts: [], enemyIdxs: new Set(), selfKw: {}, extraKw: [] };
+const dealcalcState = { sinner: null, identity: null, selId: null, skillOpts: [], enemyIdxs: new Set(), selfKw: {}, extraKw: [], equippedGifts: [], giftTier: {} };
+// 기프트 effect 텍스트를 "기본 효과/+/++" 단계로 분리 (없으면 단일 단계로 취급)
+function dealcalcGiftEffectTiers(effectText){
+  const lines = String(effectText || "").split("\n");
+  const headers = new Set(["기본 효과", "+", "++"]);
+  if (!headers.has(lines[0])) return [{label: null, text: effectText || ""}];
+  const tiers = [];
+  let cur = null;
+  lines.forEach(line => {
+    if (headers.has(line)){
+      if (cur) tiers.push(cur);
+      cur = {label: line, text: []};
+    } else if (cur){
+      cur.text.push(line);
+    }
+  });
+  if (cur) tiers.push(cur);
+  return tiers.map(t => ({label: t.label, text: t.text.join("\n")}));
+}
+function dealcalcHasWealthGift(){ return dealcalcState.equippedGifts.includes("부"); }
 function dealcalcA(x){
   if (x < 0) return -0.5;
   if (x < 1) return (x - 1) / 2;
@@ -6305,6 +6324,72 @@ function dealcalcRenderEnemyPicked(){
     });
   });
 }
+function dealcalcRenderGiftSearch(){
+  const q = document.getElementById("dcGiftSearch").value.trim().toLowerCase();
+  const box = document.getElementById("dcGiftSearchList");
+  if (!q){ box.innerHTML = ""; return; }
+  const list = EGO_GIFT_DATA
+    .filter(g => !dealcalcState.equippedGifts.includes(g.name))
+    .filter(g => g.name.toLowerCase().includes(q) || (g.aliases || []).some(a => a.toLowerCase().includes(q)) || (g.english || "").toLowerCase().includes(q))
+    .slice(0, 40);
+  box.innerHTML = list.map(g => `
+    <button type="button" class="dealcalc-enemy-chip" data-gift="${escapeHTML(g.name)}">
+      ${g.icon ? `<img src="${g.icon}" alt="">` : ""}${escapeHTML(g.name)} (${escapeHTML(g.rank)})
+    </button>`).join("");
+  box.querySelectorAll("[data-gift]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      dealcalcState.equippedGifts.push(btn.dataset.gift);
+      document.getElementById("dcGiftSearch").value = "";
+      dealcalcRenderGiftSearch();
+      dealcalcRenderGiftEquipped();
+      renderDealCalcView();
+    });
+  });
+}
+function dealcalcRenderGiftEquipped(){
+  const box = document.getElementById("dcGiftEquipped");
+  if (!dealcalcState.equippedGifts.length){
+    box.innerHTML = `<div class="dealcalc-gift-empty">장착한 기프트 없음</div>`;
+    return;
+  }
+  box.innerHTML = dealcalcState.equippedGifts.map(name => {
+    const g = EGO_GIFT_DATA.find(x => x.name === name);
+    if (!g) return "";
+    const tiers = dealcalcGiftEffectTiers(g.effect);
+    const storedTier = dealcalcState.giftTier[name];
+    const tierIdx = Math.min(storedTier != null ? storedTier : tiers.length - 1, tiers.length - 1);
+    const tierSelect = tiers.length > 1
+      ? `<select class="dealcalc-gift-card-tier" data-gift-tier="${escapeHTML(name)}">${tiers.map((t, i) => `<option value="${i}"${i === tierIdx ? " selected" : ""}>${escapeHTML(t.label)}</option>`).join("")}</select>`
+      : "";
+    const color = GIFT_RANK_COLOR[g.rankNum] || "#8a8f98";
+    return `<div class="dealcalc-gift-card">
+      <div class="dealcalc-gift-card-head">
+        ${g.icon ? `<img src="${g.icon}" alt="">` : ""}
+        <span class="dealcalc-gift-card-name">${escapeHTML(g.name)}</span>
+        <span class="dealcalc-gift-card-rank" style="background:${color}">${escapeHTML(g.rank)}</span>
+        ${tierSelect}
+        <button type="button" class="dealcalc-gift-card-remove" data-gift-remove="${escapeHTML(name)}" title="제거">✕</button>
+      </div>
+      <div class="dealcalc-gift-card-effect">${linkifyKeywords(tiers[tierIdx].text)}</div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-gift-remove]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const name = btn.dataset.giftRemove;
+      dealcalcState.equippedGifts = dealcalcState.equippedGifts.filter(n => n !== name);
+      delete dealcalcState.giftTier[name];
+      dealcalcRenderGiftEquipped();
+      dealcalcRenderGiftSearch();
+      renderDealCalcView();
+    });
+  });
+  box.querySelectorAll("[data-gift-tier]").forEach(sel => {
+    sel.addEventListener("change", () => {
+      dealcalcState.giftTier[sel.dataset.giftTier] = Number(sel.value);
+      dealcalcRenderGiftEquipped();
+    });
+  });
+}
 function dealcalcTargetsFor(sin, atype){
   if (dealcalcState.enemyIdxs.size){
     return [...dealcalcState.enemyIdxs].map(idx => {
@@ -6357,7 +6442,8 @@ function renderDealCalcView(){
   const level = Math.max(1, Number(document.getElementById("dcLevel").value) || 60);
   const atkBonus = Number(document.getElementById("dcAtkLevelBonus").value) || 0;
   const ownedCost = Math.max(0, Number(document.getElementById("dcOwnedCost").value) || 0);
-  const wealthGift = document.getElementById("dcWealthGift").checked;
+  const wealthGift = dealcalcHasWealthGift();
+  document.getElementById("dcWealthDetected").hidden = !wealthGift;
   const wealthBonus = wealthGift ? Math.min(20, Math.floor(ownedCost / 500)) : 0;
   const atkLevel = level + atkBonus + wealthBonus;
 
@@ -6449,7 +6535,8 @@ function dealcalcWireInputs(){
   document.getElementById("dealCalcBugMode").addEventListener("change", renderDealCalcView);
   document.getElementById("dcKwAddBtn").addEventListener("click", dealcalcAddKw);
   document.getElementById("dcKwAddInput").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); dealcalcAddKw(); } });
-  ["dcLevel","dcAtkLevelBonus","dcCrit","dcClashRounds","dcCoinCountAdj","dcDamageMult","dcOwnedCost","dcWealthGift",
+  document.getElementById("dcGiftSearch").addEventListener("input", dealcalcRenderGiftSearch);
+  ["dcLevel","dcAtkLevelBonus","dcCrit","dcClashRounds","dcCoinCountAdj","dcDamageMult","dcOwnedCost",
    "dcSelfDmgPct","dcManualMs","dcManualMd","dcDefLevel","dcSinRes","dcSinResCustom","dcTypeRes",
    "dcTypeResCustom","dcStagger","dcTargetVulnPct"].forEach(id => {
     const el = document.getElementById(id);
@@ -6468,6 +6555,7 @@ dealcalcPopulateKwDatalist();
 dealcalcPopulateAttackType();
 dealcalcRenderEnemyList();
 dealcalcRenderEnemyPicked();
+dealcalcRenderGiftEquipped();
 dealcalcWireInputs();
 
 /* ---- 이름만 검색 토글 (설정이 아니라 검색창 옆에 노출, 자주 켜고 끌 것으로 예상) ---- */
