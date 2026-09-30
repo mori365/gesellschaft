@@ -5749,19 +5749,38 @@ function enemyIdentity(e, idx){
   if (PHASE_NAME_RE.test(e.name) || (groupKey && PHASE_GROUP_KEYS.has(groupKey))) return groupKey;
   return e.name;
 }
-// 하위 개체로 등장하지만, 다른 곳(다른 그룹/챕터)에서 독립된 개체로도 존재하는 경우
-// 그 독립 카드로 바로 이동할 수 있게 하기 위한 탐색. "???"는 서로 다른 개체를 가리킬
-// 수 있어 이름만으로 연결하지 않는다.
+// 하위 개체로 등장하지만, "같은 장 + 같은 전투 방식(일반/집중)"에 하위 개체가 아닌
+// 독립된 개체로도 존재하는 경우만 찾는다 (chapter 문자열 자체가 "N장"/"N장 집중 전투"를
+// 구분하므로 chapter 완전 일치가 곧 두 조건을 동시에 만족시킨다). "???"는 서로 다른
+// 개체를 가리킬 수 있어 이름만으로 연결하지 않는다.
 function enemyFindStandalone(e, myGroupKey, excludeIdxs){
   if (e.name === "???") return null;
   for (let i = 0; i < ENEMY_DATA.length; i++){
     if (excludeIdxs.includes(i)) continue;
     const x = ENEMY_DATA[i];
     if (x.name !== e.name) continue;
+    if (x.chapter !== e.chapter) continue;
+    if (x.role === "sub") continue;
     if (enemyGroupKey(x) === myGroupKey) continue;
     return i;
   }
   return null;
+}
+// 두 스킬셋이 사실상 동일한지 (이름·속성·공격유형·위력·코인위력·가중치 기준)
+function enemySkillFingerprint(skills){
+  return (skills || []).map(s => [s.name, s.sinAttribute, s.attackType, s.power, s.coinPower, s.attackWeight].join("|")).join("||");
+}
+function enemySkillsEqual(a, b){
+  return enemySkillFingerprint(a) === enemySkillFingerprint(b);
+}
+// 하위 개체가 검색 시 독립된 카드로 표시될 자격이 있는지: 같은 장·같은 전투 방식에
+// 하위 개체가 아닌 형태로도 등장하면서(=enemyFindStandalone), 그 개체와 스킬셋이
+// 실제로 다른 경우만 별개의 개체로 취급해 별도 카드를 만든다. 그렇지 않으면(대응하는
+// 독립 개체가 없거나, 있어도 스킬셋이 같으면) 원래 소속된 그룹 카드로만 표시한다.
+function enemySubDeservesOwnCard(e, excludeIdxs){
+  const idx = enemyFindStandalone(e, enemyGroupKey(e), excludeIdxs || []);
+  if (idx == null) return false;
+  return !enemySkillsEqual(e.skills, ENEMY_DATA[idx].skills);
 }
 function enemyGroupIdxsFor(idx){
   const key = enemyIdentity(ENEMY_DATA[idx], idx);
@@ -5830,14 +5849,22 @@ function renderEnemyGrid(){
   const filtered = ENEMY_DATA
     .map((e, idx) => ({e, idx}))
     .filter(({e}) => (q ? true : e.chapter === enemyCurrentChapter()) && enemyMatchesQuery(e, q));
-  // 검색 중: 메인 적이 검색어와 맞으면 그 그룹 전체(메인+하위 개체)를 한 카드로, 하위 개체만 맞으면
-  // 그 하위 개체만 따로 카드로 보여준다.
+  // 검색 중: 메인 적이 검색어와 맞으면 그 그룹 전체(메인+하위 개체)를 한 카드로 보여준다.
+  // 하위 개체만 맞은 경우, 그 하위 개체가 "같은 장·같은 전투 방식에 하위 개체가 아닌
+  // 형태로도 등장 + 스킬셋이 다름"을 만족해 독립 카드 자격이 있을 때만 따로 카드로
+  // 보여주고, 그렇지 않으면(자격이 없으면) 소속 그룹 전체를 메인 히트와 동일하게 끌어온다.
   const mainHitKeys = new Set();
   const loneSubIdx = new Set();
   if (q){
     filtered.forEach(({e}) => {
       const k = enemyGroupKey(e);
       if (k && SUB_GROUP_KEYS.has(k) && e.role !== "sub") mainHitKeys.add(k);
+    });
+    filtered.forEach(({e}) => {
+      const k = enemyGroupKey(e);
+      if (e.role === "sub" && k && SUB_GROUP_KEYS.has(k) && !mainHitKeys.has(k) && !enemySubDeservesOwnCard(e, [])){
+        mainHitKeys.add(k);
+      }
     });
     const have = new Set(filtered.map(it => it.idx));
     ENEMY_DATA.forEach((e, idx) => {
@@ -5890,7 +5917,7 @@ function enemyDetailBodyHTML(e, curIdxs){
   const groupLabel = enemyGroupLabel(e);
   if (e.role === "sub"){
     const standaloneIdx = enemyFindStandalone(e, enemyGroupKey(e), curIdxs || []);
-    const jumpLink = standaloneIdx != null
+    const jumpLink = (standaloneIdx != null && !enemySkillsEqual(e.skills, ENEMY_DATA[standaloneIdx].skills))
       ? `<button type="button" class="gift-link-chip" data-jump-idx="${standaloneIdx}">개별 카드로 보기</button>` : "";
     rows.push(`<div class="skill-tt-row"><span>소속</span><span>${escapeHTML(groupLabel || "")}${e.phase ? ` (${escapeHTML(e.phase)} 등장)` : ""}${jumpLink}</span></div>`);
   } else {
