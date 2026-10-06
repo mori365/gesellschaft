@@ -296,8 +296,8 @@
         <div class="dealcalc-skill-detail" id="dcSkillDetail"></div>
 
         <div class="dealcalc-row-3">
-          <div><label title="편집 중인 수감자의 인격 레벨 (수감자마다 따로 저장)">인격 레벨</label><input type="number" id="dcLevel" value="60" min="1" max="65" step="1"></div>
-          <div><label title="동기화 단계에 따라 사용 가능한 스킬 슬롯(3스킬/강화 스킬 등)이 달라집니다. 다만 각 스킬의 위력·코인 수치 자체는 4단계(최대) 기준 데이터만 있어 단계를 낮춰도 수치는 동일하게 표시됩니다.">동기화</label>
+          <div><label title="편집 중인 수감자의 인격 레벨 (수감자마다 따로 저장, 최대 65)">인격 레벨</label><input type="number" id="dcLevel" value="65" min="1" max="65" step="1"></div>
+          <div><label title="동기화 단계별 위력·코인 위력·코인 수는 게임 데이터 기준으로 바뀝니다. 3스킬·강화 스킬은 3단계부터 사용할 수 있습니다.">동기화</label>
             <select id="dcSync">
               <option value="1">1단계</option>
               <option value="2">2단계</option>
@@ -305,17 +305,20 @@
               <option value="4" selected>4단계 (최대)</option>
             </select>
           </div>
-          <div><label title="포이즈 등으로 치명타 조건을 만족한 경우 (기본 +20%)">치명타</label>
-            <label class="sync-toggle dealcalc-inline-toggle"><input type="checkbox" id="dcCrit"><span class="toggle-track"></span></label>
-          </div>
-        </div>
-        <div class="dealcalc-row">
-          <label title="레벨로 정해지는 기본 공격 레벨에 추가로 더할 값 (버프/디버프 등)">추가 공격 레벨</label>
-          <input type="number" id="dcAtkLevelBonus" value="0" step="1">
+          <div><label title="편집 중인 수감자의 정신력 (-45~45, 수감자마다 따로 저장). 코인 앞면 확률 = 50% + 정신력%. 최대 딜(더하기 코인 전부 앞면·빼기 코인 전부 뒷면)과 함께 이 확률로 굴렸을 때의 기대 딜을 보여줍니다.">정신력</label><input type="number" id="dcSanity" value="45" min="-45" max="45" step="1"></div>
         </div>
         <div class="dealcalc-row">
           <label title="합을 벌이는 상대 스킬의 코인 수 = 이겨야 하는 합 라운드 수. 합을 전부 이기면 내 코인은 하나도 잃지 않고, 이긴 라운드당 피해량 +3%가 붙습니다. 0이면 일방 공격만 계산">상대 코인 수 (합 라운드)</label>
           <input type="number" id="dcClashRounds" value="0" min="0" step="1">
+        </div>
+
+        <h4 class="dealcalc-subhead" title="이번 턴 공격자에게 걸린 기본 버프/디버프. 감소 효과는 음수로 입력하세요.">자신 상태 효과</h4>
+        <div class="dealcalc-kw-grid">
+          <label class="dealcalc-kw-item" title="공격 위력 증가(감소는 음수): 공격 스킬의 최종 위력 +n → 코인마다 위력 +n"><span class="dealcalc-kw-name">공격 위력 증가</span><input type="number" id="dcStPowerUp" value="0" step="1"></label>
+          <label class="dealcalc-kw-item" title="코인 위력 증가 / 더하기 코인 강화(감소는 음수): 앞면 코인의 위력 +n. 빼기 코인 스킬은 반대로 앞면일 때 더 깎입니다."><span class="dealcalc-kw-name">코인 위력 증가</span><input type="number" id="dcStCoinUp" value="0" step="1"></label>
+          <label class="dealcalc-kw-item" title="피해량 증가(감소는 음수): 1당 가하는 피해 +10% (최대 10)"><span class="dealcalc-kw-name">피해량 증가</span><input type="number" id="dcStDmgUp" value="0" step="1"></label>
+          <label class="dealcalc-kw-item" title="공격 레벨 증가(감소는 음수): 1당 공격 레벨 +1"><span class="dealcalc-kw-name">공격 레벨 증가</span><input type="number" id="dcAtkLevelBonus" value="0" step="1"></label>
+          <label class="dealcalc-kw-item" title="마비: 1당 코인 1개(앞에서부터)의 코인 위력이 0이 됩니다"><span class="dealcalc-kw-name">마비</span><input type="number" id="dcStParalyze" value="0" min="0" step="1"></label>
         </div>
 
         <h4 class="dealcalc-subhead" title="선택한 인격의 스킬·패시브, 장착한 기프트 효과에 등장하는 전용 키워드는 자동으로 추가됩니다(파란 '자동' 표시). 그 외 필요한 키워드는 '+ 키워드 추가'에서 검색해서 직접 추가하세요.">자신 키워드 스택</h4>
@@ -329,6 +332,18 @@
         <details class="dealcalc-advanced">
           <summary>기타 보정치 (조건부 코인 수·가중치, 기프트·패시브 등 수동 반영)</summary>
           <div class="dealcalc-row">
+            <label title="슬롯 바 순서(= 스킬 체인 순서)로 같은 죄악 스킬의 공명을 계산해 공격 레벨에 더합니다. 일반 공명: n번째 같은 죄악 스킬 +0/+1/+3/+3/+5/+5/+7… · 완전 공명(인접 3개 이상): 연결 수 3→+3, 4~5→+5, 6~7→+7… · 둘 중 큰 값 적용 (커뮤니티 실험값)">죄악 공명 자동 반영</label>
+            <label class="sync-toggle dealcalc-inline-toggle"><input type="checkbox" id="dcResonance" checked><span class="toggle-track"></span></label>
+          </div>
+          <div class="dealcalc-row">
+            <label title="호흡이 없어도 모든 코인에 치명타를 적용합니다 (특수 스킬 효과 등). 호흡이 있으면 이 설정 없이도 자동으로 치명타 확률이 반영됩니다.">치명타 강제 적용</label>
+            <label class="sync-toggle dealcalc-inline-toggle"><input type="checkbox" id="dcCrit"><span class="toggle-track"></span></label>
+          </div>
+          <div class="dealcalc-row">
+            <label title="치명타 피해는 기본 +20%(정적 보정 Ms에 0.2 가산). '명경지수'·'본국검술' 등 치명타 피해량 증가 효과의 합을 %로 입력">치명타 피해량 증가(%)</label>
+            <input type="number" id="dcCritDmgPct" value="0" step="1">
+          </div>
+          <div class="dealcalc-row">
             <label title="예: 거미집의 검 료슈 '공간참 - 잔'처럼 조건부로 코인이 재사용/추가되는 스킬을 반영할 때 사용">코인 수 보정(+/-)</label>
             <input type="number" id="dcCoinCountAdj" value="0" step="1">
           </div>
@@ -341,7 +356,7 @@
             <input type="number" id="dcOwnedCost" value="0" min="0" step="100" placeholder="보유 코스트">
           </div>
           <div class="dealcalc-row">
-            <label title="자신의 '피해량 증가/감소' 계열 스킬·패시브·기프트 효과 총합">자신 피해량 증감(%)</label>
+            <label title="'피해량 증가' 상태 효과 외에, 스킬·패시브·기프트에 %로 적힌 가하는 피해 증감의 총합">기타 가하는 피해 증감(%)</label>
             <input type="number" id="dcSelfDmgPct" value="0" step="1">
           </div>
           <div class="dealcalc-row">
@@ -392,8 +407,14 @@
             <option value="2">흐트러짐++</option>
           </select>
         </div>
+        <h4 class="dealcalc-subhead" title="선택한 적 모두에게 걸려 있다고 보고 계산합니다. 감소 효과는 음수로 입력하세요.">적 상태 효과</h4>
+        <div class="dealcalc-kw-grid">
+          <label class="dealcalc-kw-item" title="취약(보호는 음수): 1당 받는 피해 +10% (최대 10)"><span class="dealcalc-kw-name">취약 (보호는 −)</span><input type="number" id="dcStVuln" value="0" step="1"></label>
+          <label class="dealcalc-kw-item" title="방어 레벨 증가(감소는 음수): 레벨차 보정에 반영"><span class="dealcalc-kw-name">방어 레벨 증가</span><input type="number" id="dcStDefUp" value="0" step="1"></label>
+          <label class="dealcalc-kw-item" title="파열 보호: 1당 파열로 받는 피해 -1"><span class="dealcalc-kw-name">파열 보호</span><input type="number" id="dcStRuptureProt" value="0" min="0" step="1"></label>
+        </div>
         <div class="dealcalc-row">
-          <label title="대상의 '취약/보호' 계열 상태이상 총합">대상 취약·보호(%)</label>
+          <label title="'취약' 상태 효과 외에, 패시브 등에 %로 적힌 받는 피해 증감의 총합">기타 받는 피해 증감(%)</label>
           <input type="number" id="dcTargetVulnPct" value="0" step="1">
         </div>
 

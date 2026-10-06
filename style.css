@@ -1019,6 +1019,7 @@
   .dealcalc-turn-slot-tag{ font-size:10.5px; color:var(--text-faint); font-weight:700; }
   .dealcalc-turn-slot-name{ font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:3px; }
   .dealcalc-turn-slot-name img{ width:13px; height:13px; flex:none; }
+  .dealcalc-turn-slot-res{ font-size:9.5px; font-weight:700; color:var(--accent-strong); margin-left:4px; }
   .dealcalc-slotcount{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .dealcalc-slotcount-label{ font-size:12.5px; font-weight:600; color:var(--text-muted); }
   .dealcalc-sinner-switch .picker-sinner-btn.is-in-party{ opacity:1; border-color:color-mix(in srgb, var(--accent) 55%, var(--border-strong)); }
@@ -1055,7 +1056,9 @@
   .dealcalc-skill-detail-head{ display:flex; align-items:center; gap:8px; margin-bottom:6px; font-weight:700; color:var(--text); }
   .dealcalc-skill-detail-stats{ display:flex; gap:14px; flex-wrap:wrap; font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--text); margin-bottom:6px; }
   .dealcalc-skill-detail-coins{ display:flex; flex-direction:column; gap:3px; }
-  .dealcalc-kw-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(165px,1fr)); gap:6px 10px; }
+  .dealcalc-kw-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:6px 10px; }
+  .dealcalc-kw-item.has-count input{ flex-basis:50px; width:50px; padding:5px 4px; }
+  .dealcalc-kw-x{ font-size:11px; color:var(--text-faint); flex:none; }
   .dealcalc-kw-item{
     display:flex; align-items:center; gap:6px; min-width:0;
     padding:3px 6px; border-radius:7px; border:1px solid transparent;
@@ -1153,6 +1156,8 @@
   .dealcalc-scenario.is-higher{ border-color:var(--accent); }
   .dealcalc-scenario-label{ font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:4px; }
   .dealcalc-scenario-value{ font-family:"IBM Plex Mono",monospace; font-size:26px; font-weight:700; color:var(--accent-strong); }
+  .dealcalc-scenario-sub{ font-size:11.5px; color:var(--text-muted); margin-top:4px; line-height:1.5; }
+  .dealcalc-scenario-sub b{ font-family:"IBM Plex Mono",monospace; color:var(--text); font-weight:600; }
   .dealcalc-breakdown{ font-size:12px; color:var(--text-muted); margin-top:16px; }
   .dealcalc-breakdown-row{
     display:flex; justify-content:space-between; gap:10px; padding:4px 0;

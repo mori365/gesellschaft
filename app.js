@@ -6063,19 +6063,29 @@ document.getElementById("enemyResetAll").addEventListener("click", () => {
 });
 
 /* ---- 딜뽕 계산기 ----
-   데미지 = 코인위력 × max(1+Ms, 0) × (1+Md)
-   코인위력(전부 앞면) = 기본위력×코인수 + 코인위력×(1+2+...+코인수)  (n번째 코인은 코인위력×n만큼 누적)
-   Ms(정적, 서로 덧셈) = 죄종내성(A) + 속성내성(B, 흐트러짐 시 덮어씀) + 레벨차(C=x/(|x|+25)) + 합 보너스(D=0.03×라운드) + 치명타(E=0.2)
-   Md(동적, 서로 덧셈) = 자신 피해량 증감(G) + 대상 취약·보호(H)
-   출처: blog.limbus.wiki/docs/damage_formula (게임 코드 BattleUnitModel::GiveAttackDamage 기반) — 2026-09-29 조사.
-   기프트/패시브 개별 조건부 효과는 "기타 보정치" 수동 입력으로 반영 (자동 파싱은 순차 확장 예정).
+   코인 하나하나가 따로 적중하고, 코인마다 피해를 계산해 합친다.
+   n번째 코인의 위력 = 기본위력 + (앞서 앞면이 나온 코인 수 포함 누적 코인위력) + 공격 위력 증가 (최소 0)
+   코인 피해 = 위력 × max(1+Ms, 0) × (1+Md)  (코인마다 소수점 버림)
+   Ms(정적, 서로 덧셈) = 죄종내성(A) + 속성내성(B, 흐트러짐 시 덮어씀) + 레벨차(C=x/(|x|+25)) + 합 보너스(D=0.03×라운드) + 치명타(E=0.2+치명타 피해 증가)
+   Md(동적, 서로 덧셈) = 피해량 증가(1당 10%) + 기타 가하는 피해 증감 + 취약/보호(1당 10%) + 기타 받는 피해 증감
+   출처: blog.limbus.wiki/docs/damage_formula (게임 코드 BattleUnitModel::GiveAttackDamage 기반) — 2026-09-29 조사,
+   나무위키 'Limbus Company/전투'·'Limbus Company/키워드' — 2026-10-06 조사.
+   - 코인 앞면 확률 = 50% + 정신력% (정신력 -45~45 → 5~95%)
+   - 호흡: 적중 시 위력×5% 확률(20 이상 확정)로 치명타, 횟수가 1 이상이어야 함 (턴 종료 시 감소라 스킬 도중엔 줄지 않음)
+   - 파열: 공격 스킬 적중마다 위력만큼 고정 피해, 적중 후 횟수 -1 / 침잠: 같은 방식의 정신력 피해(정신력 없는 대상은 우울 피해)
+   - 마비: 1당 앞에서부터 코인 1개의 코인 위력이 0
+   - 죄악 공명: 슬롯 바 순서(스킬 체인)로 공격 레벨 보정 (dealcalcResonance 참고)
+   기프트/패시브 개별 조건부 효과는 "기타 보정치" 수동 입력으로 반영.
    기본위력·코인위력·코인수·공격레벨은 인격/레벨 선택에서 항상 파생시키며 사용자가 직접 입력하지 않는다. */
 const DEALCALC_TIER_MULT = {"약점":2.0, "취약":1.5, "보통":1.0, "견딤":0.75, "내성":0.5};
 const DEALCALC_SELF_KEYWORDS = ["화상","출혈","진동","파열","침잠","충전","호흡"];
+// 위력과 횟수를 따로 가지는 키워드 (충전은 횟수만 있음)
+const DEALCALC_COUNT_KW = new Set(["화상","출혈","진동","파열","침잠","호흡"]);
 const dealcalcState = {
   sinner: null, identity: null, selId: null, skillOpts: [],
   party: {}, active: null, order: [], nextUid: 1, memberSettings: {}, egoLevel: {}, giftOpen: new Set(),
-  enemyIdxs: new Set(), selfKw: {}, extraKw: [], targetKw: {}, targetExtraKw: [], equippedGifts: [], giftTier: {},
+  enemyIdxs: new Set(), selfKw: {}, selfKwCnt: {}, extraKw: [], targetKw: {}, targetKwCnt: {}, targetExtraKw: [],
+  equippedGifts: [], giftTier: {},
 };
 // 기프트 effect 텍스트를 "기본 효과/+/++" 단계로 분리 (없으면 단일 단계로 취급)
 function dealcalcGiftEffectTiers(effectText){
@@ -6136,13 +6146,6 @@ function dealcalcLevelAdv(atk, def){
   const x = atk - def;
   return x / (Math.abs(x) + 25);
 }
-function dealcalcTri(n){ return n > 0 ? n * (n + 1) / 2 : 0; }
-// fromIdx~toIdx번째 코인들(1-based)의 위력 합
-function dealcalcCoinRangeTotal(power, coinPower, fromIdx, toIdx){
-  if (toIdx < fromIdx) return 0;
-  const count = toIdx - fromIdx + 1;
-  return power * count + coinPower * (dealcalcTri(toIdx) - dealcalcTri(fromIdx - 1));
-}
 function dealcalcBugMode(){ return document.getElementById("dealCalcBugMode").checked; }
 function dealcalcTierSelectHTML(){
   const bug = dealcalcBugMode();
@@ -6188,7 +6191,7 @@ function dealcalcSkillSin(sinner, identity, skillKey){
 // 들어가는지로 추정한다.
 function dealcalcTierValues(t, fallback){
   if (!t) return fallback;
-  return {power: t.p, coin: t.c, coinCount: Math.max(1, t.n || 1), lvCorr: t.lc || 0, sin: t.s || null, fxNote: !!t.fx};
+  return {power: t.p, coin: t.c, coinCount: Math.max(1, t.n || 1), lvCorr: t.lc || 0, sin: t.s || null, atype: t.a || null, fxNote: !!t.fx};
 }
 function dealcalcBuildSkillOptions(sinner, identity, tier = 4){
   if (!sinner || !identity) return [];
@@ -6277,9 +6280,46 @@ function dealcalcEgoLevel(slug){
   return Math.max(1, Math.min(dealcalcEgoMaxLevel(slug), v || def));
 }
 function dealcalcSettings(sinner){
-  if (!dealcalcState.memberSettings[sinner]) dealcalcState.memberSettings[sinner] = {level: 60, sync: 4};
+  if (!dealcalcState.memberSettings[sinner]) dealcalcState.memberSettings[sinner] = {level: 65, sync: 4, sanity: 45};
   return dealcalcState.memberSettings[sinner];
 }
+// 죄악 공명. 슬롯 바 순서를 스킬 체인 순서로 보고, 같은 죄악 스킬끼리 공격 레벨 보정을 준다.
+// 수치는 커뮤니티 실험값(아카라이브 로보토미 코퍼레이션 채널 109147400, 2024-06 — 나무위키 '전투' 문서가 링크):
+//   일반 공명: 같은 죄악의 n번째 스킬 → +0, +1, +3, +3, +5, +5, +7, +7, +9, +9, +11 (n=1~11)
+//   완전 공명: 바로 인접한 같은 죄악 k개(3개 이상) → 그 스킬 전부 +3(3), +5(4~5), +7(6~7), +9(8~9), +11(10), +13(11~12)
+//   두 값 중 큰 쪽이 적용된다. 실험 범위를 넘는 값은 같은 규칙으로 늘려 추정.
+const DEALCALC_RES_NORMAL = [0, 0, 1, 3, 3, 5, 5, 7, 7, 9, 9, 11];
+const DEALCALC_RES_ABS = {3: 3, 4: 5, 5: 5, 6: 7, 7: 7, 8: 9, 9: 9, 10: 11, 11: 13, 12: 13};
+function dealcalcResNormal(n){
+  if (n <= 1) return 0;
+  return n < DEALCALC_RES_NORMAL.length ? DEALCALC_RES_NORMAL[n] : (n % 2 ? n : n - 1);
+}
+function dealcalcResAbs(k){
+  if (k < 3) return 0;
+  return DEALCALC_RES_ABS[k] != null ? DEALCALC_RES_ABS[k] : (k % 2 ? k + 2 : k + 1);
+}
+// uid → {sin, nth, run, normal, abs, bonus}
+function dealcalcResonance(){
+  const out = new Map();
+  const sins = dealcalcOrderedSlots().map(({sinner: sn, member: m, slot}) => {
+    const o = dealcalcSlotOptions(sn, m.identity).find(x => x.id === dealcalcSlotEffectiveId(slot));
+    return {uid: slot.uid, sin: o ? o.sin : null};
+  });
+  const seen = {};
+  sins.forEach((s, i) => {
+    if (!s.sin) return;
+    seen[s.sin] = (seen[s.sin] || 0) + 1;
+    let a = i, b = i;
+    while (a > 0 && sins[a - 1].sin === s.sin) a--;
+    while (b < sins.length - 1 && sins[b + 1].sin === s.sin) b++;
+    const run = b - a + 1;
+    const normal = dealcalcResNormal(seen[s.sin]);
+    const abs = dealcalcResAbs(run);
+    out.set(s.uid, {sin: s.sin, nth: seen[s.sin], run, normal, abs, bonus: Math.max(normal, abs)});
+  });
+  return out;
+}
+function dealcalcResonanceOn(){ return document.getElementById("dcResonance").checked; }
 // 3스킬·강화(EGO 부식) 스킬은 동기화 3단계부터 해금 — 인격 스킬 수치 자체는 현재 4단계 데이터 기준.
 function dealcalcSlotOptions(sinner, identity){
   const tier = dealcalcSettings(sinner).sync;
@@ -6400,6 +6440,7 @@ function dealcalcRenderMemberSettings(){
   const st = dealcalcSettings(dealcalcState.sinner);
   document.getElementById("dcLevel").value = st.level;
   document.getElementById("dcSync").value = String(st.sync);
+  document.getElementById("dcSanity").value = st.sanity;
 }
 function dealcalcSetSlotCount(sinner, n){
   n = Math.max(0, Math.min(DEALCALC_MAX_SLOTS, n));
@@ -6476,17 +6517,20 @@ function dealcalcRenderSlotBar(){
     return;
   }
   const a = dealcalcState.active;
+  const res = dealcalcResonanceOn() ? dealcalcResonance() : new Map();
   bar.innerHTML = refs.map(({sinner: sn, member: m, slot}) => {
     const id = dealcalcSlotEffectiveId(slot);
     const o = dealcalcSlotOptions(sn, m.identity).find(x => x.id === id);
     const isActive = a && a.uid === slot.uid;
     const sinIcon = o && o.sin ? (SIN_ICON_DATA[o.sin] || "") : "";
+    const r = res.get(slot.uid);
+    const resTag = r && r.bonus ? `<span class="dealcalc-turn-slot-res" title="${escapeHTML(r.abs >= r.normal ? `${r.sin} 완전 공명 ${r.run}연결` : `${r.sin} ${r.nth}번째 공명`)} → 공격 레벨 +${r.bonus}">공명+${r.bonus}</span>` : "";
     const title = `${sn} · ${m.identity}${slot.ego ? " — 길게 누르면 각성/침식 전환" : ""}`;
     return `<div role="button" tabindex="0" class="dealcalc-turn-slot${isActive ? " is-active" : ""}${slot.ego ? " is-ego" : ""}" data-slot-uid="${slot.uid}" title="${escapeHTML(title)}">
       <span class="dealcalc-turn-slot-grip" aria-hidden="true">⠿</span>
       <img class="dealcalc-turn-slot-face" src="${SINNER_ICON_DATA[sn] || ""}" alt="" draggable="false">
       <span class="dealcalc-turn-slot-text">
-        <span class="dealcalc-turn-slot-tag">${escapeHTML(dealcalcSlotLabel(slot.uid))}</span>
+        <span class="dealcalc-turn-slot-tag">${escapeHTML(dealcalcSlotLabel(slot.uid))}${resTag}</span>
         <span class="dealcalc-turn-slot-name">${sinIcon ? `<img src="${sinIcon}" alt="" draggable="false">` : ""}${escapeHTML(o ? o.name : "미지정")}</span>
       </span>
       ${slot.ego ? `<button type="button" class="dealcalc-turn-slot-cancel" data-cancel-ego="${slot.uid}" title="E.G.O 사용 취소">✕</button>` : ""}
@@ -6642,7 +6686,7 @@ function dealcalcRenderSkillDetail(){
     }</select></div>`);
   }
   const lv = o.lvCorr ? ` <span class="dealcalc-note">(공격 레벨 ${o.lvCorr > 0 ? "+" : ""}${o.lvCorr})</span>` : "";
-  rows.push(`<div class="dealcalc-skill-detail-stats"><span>위력 ${o.power}</span><span>코인위력 ${o.coin >= 0 ? "+" : ""}${o.coin}</span><span>코인 ${o.coinCount}개</span>${lv}</div>`);
+  rows.push(`<div class="dealcalc-skill-detail-stats"><span>위력 ${o.power}</span><span>코인위력 ${o.coin >= 0 ? "+" : ""}${o.coin}</span><span>코인 ${o.coinCount}개</span>${o.atype ? `<span>${escapeHTML(o.atype)}</span>` : ""}${lv}</div>`);
   if (o.fxNote){
     rows.push(`<div class="dealcalc-note">※ 이 ${o.kind === "ego" ? "해석" : "동기화"} 단계에서는 코인 효과가 아래 문구(최대 단계 기준)와 다릅니다. 수치(위력·코인위력·코인 수)는 이 단계 기준입니다.</div>`);
   }
@@ -6719,6 +6763,8 @@ function dealcalcScanKeywords(text){
 // 거의 모든 인격 스킬 텍스트에 등장하는 범용 게임 용어(개별 캐릭터 고유 스택이 아님) — 자동
 // 추가 대상에서 제외. 실제 "누적 스택"으로 관리되는 키워드가 아니라 코인 속성·상태 트리거이므로.
 const DEALCALC_AUTO_KW_EXCLUDE = new Set(["파괴 불가 코인","적출 코인","크리티컬","흐트러짐","행동 불가","패닉","공격 레벨","방어 레벨","합 위력","코인 위력"]);
+// 별도의 "상태 효과" 입력칸으로 계산에 반영하는 키워드 — 키워드 스택 목록에 중복으로 띄우지 않는다
+const DEALCALC_STATUS_KW = new Set(["취약","보호","마비","파열 보호"]);
 // side: "self"면 현재 선택된 인격의 전체 스킬(기본+강화)·패시브 + 장착한 에고 기프트(선택된
 // 강화 단계) 텍스트를 훑어 전용 키워드를 찾는다. "target"이면 현재 선택된 공격 스킬의 코인
 // 효과 텍스트(스킬이 대상에게 무엇을 부여하는지)와 선택된 적들의 패시브·스킬 이름을 훑는다.
@@ -6749,13 +6795,27 @@ function dealcalcComputeAutoKw(side){
       texts.push(tiers[tierIdx].text);
     });
   }
-  return dealcalcScanKeywords(texts.join("\n")).filter(k => !DEALCALC_SELF_KEYWORDS.includes(k) && !DEALCALC_AUTO_KW_EXCLUDE.has(k));
+  return dealcalcScanKeywords(texts.join("\n")).filter(k => !DEALCALC_SELF_KEYWORDS.includes(k) && !DEALCALC_AUTO_KW_EXCLUDE.has(k) && !DEALCALC_STATUS_KW.has(k));
 }
 function dealcalcKwState(side){
   return side === "target"
-    ? {kw: dealcalcState.targetKw, extra: dealcalcState.targetExtraKw}
-    : {kw: dealcalcState.selfKw, extra: dealcalcState.extraKw};
+    ? {kw: dealcalcState.targetKw, cnt: dealcalcState.targetKwCnt, extra: dealcalcState.targetExtraKw}
+    : {kw: dealcalcState.selfKw, cnt: dealcalcState.selfKwCnt, extra: dealcalcState.extraKw};
 }
+// 키워드 툴팁: 계산에 반영되는 키워드는 어떻게 반영되는지 알려준다
+const DEALCALC_KW_HINT = {
+  self: {
+    "호흡": "호흡 — 적중마다 위력×5% 확률(20 이상 확정)로 치명타. 횟수가 1 이상이어야 발동하며 자동 반영됩니다.",
+    "출혈": "출혈 — 자신이 공격 코인을 굴릴 때마다 자신이 위력만큼 피해를 받습니다 (가하는 피해에는 영향 없음).",
+  },
+  target: {
+    "파열": "파열 — 공격 코인이 적중할 때마다 위력만큼 고정 피해, 적중 후 횟수 -1. 자동 반영됩니다.",
+    "침잠": "침잠 — 공격 코인이 적중할 때마다 위력만큼 정신력 피해(정신력 없는 대상은 우울 피해), 횟수 -1. 결과에 따로 표시됩니다.",
+    "화상": "화상 — 턴 종료 시 위력만큼 고정 피해, 횟수 -1. 결과에 따로 표시됩니다.",
+    "출혈": "출혈 — 대상이 공격 코인을 굴릴 때마다 위력만큼 고정 피해, 횟수 -1. 결과에 따로 표시됩니다.",
+    "진동": "진동 — '진동 폭발' 효과가 있을 때 위력만큼 흐트러짐 피해. 결과에 따로 표시됩니다.",
+  },
+};
 function dealcalcRenderKwGrid(side){
   const grid = document.getElementById(side === "target" ? "dcTargetKwGrid" : "dcSelfKwGrid");
   const st = dealcalcKwState(side);
@@ -6765,23 +6825,36 @@ function dealcalcRenderKwGrid(side){
   // 더 이상 기본/자동/수동 목록 어디에도 없는 키워드의 저장값은 정리
   const keySet = new Set(keys);
   Object.keys(st.kw).forEach(k => { if (!keySet.has(k)) delete st.kw[k]; });
+  Object.keys(st.cnt).forEach(k => { if (!keySet.has(k)) delete st.cnt[k]; });
+  const hints = DEALCALC_KW_HINT[side === "target" ? "target" : "self"];
   grid.innerHTML = keys.map(kw => {
     const isAuto = autoKw.includes(kw);
     const removable = !DEALCALC_SELF_KEYWORDS.includes(kw) && !isAuto;
-    const val = st.kw[kw] || 0;
-    const title = isAuto
-      ? `${kw} — 현재 선택 구성에서 자동 감지된 전용 키워드입니다`
-      : `${kw} 스택 (참고용 — 데미지 반영은 기타 보정치에 수동 계산)`;
-    return `<label class="dealcalc-kw-item${isAuto ? " is-auto" : ""}" title="${escapeHTML(title)}">
+    const hasCount = DEALCALC_COUNT_KW.has(kw);
+    const title = hints[kw]
+      || (kw === "충전" ? "충전 횟수 (참고용 — 소모 효과는 스킬마다 달라 기타 보정치에 수동 반영)"
+      : isAuto ? `${kw} — 현재 선택 구성에서 자동 감지된 전용 키워드입니다 (참고용 — 데미지 반영은 기타 보정치에 수동 계산)`
+      : `${kw} (참고용 — 데미지 반영은 기타 보정치에 수동 계산)`);
+    const inputs = hasCount
+      ? `<input type="number" min="0" step="1" value="${st.kw[kw] || 0}" data-kw="${escapeHTML(kw)}" title="위력" aria-label="${escapeHTML(kw)} 위력"><span class="dealcalc-kw-x">×</span><input type="number" min="0" step="1" value="${st.cnt[kw] || 0}" data-kw-cnt="${escapeHTML(kw)}" title="횟수" aria-label="${escapeHTML(kw)} 횟수">`
+      : `<input type="number" min="0" step="1" value="${st.kw[kw] || 0}" data-kw="${escapeHTML(kw)}"${kw === "충전" ? ` title="횟수"` : ""}>`;
+    return `<label class="dealcalc-kw-item${isAuto ? " is-auto" : ""}${hasCount ? " has-count" : ""}" title="${escapeHTML(title)}">
       ${KEYWORD_ICON_DATA[kw] ? `<img src="${KEYWORD_ICON_DATA[kw]}" alt="">` : ""}
       <span class="dealcalc-kw-name">${escapeHTML(kw)}${isAuto ? `<span class="dealcalc-kw-auto-tag">자동</span>` : ""}</span>
-      <input type="number" min="0" step="1" value="${val}" data-kw="${escapeHTML(kw)}">
+      ${inputs}
       ${removable ? `<button type="button" class="dealcalc-kw-remove" data-remove="${escapeHTML(kw)}" title="제거">✕</button>` : ""}
     </label>`;
   }).join("");
   grid.querySelectorAll("[data-kw]").forEach(inp => {
     inp.addEventListener("input", () => {
       st.kw[inp.dataset.kw] = Math.max(0, Number(inp.value) || 0);
+      renderDealCalcView();
+    });
+  });
+  grid.querySelectorAll("[data-kw-cnt]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      st.cnt[inp.dataset.kwCnt] = Math.max(0, Number(inp.value) || 0);
+      renderDealCalcView();
     });
   });
   grid.querySelectorAll("[data-remove]").forEach(btn => {
@@ -6790,6 +6863,7 @@ function dealcalcRenderKwGrid(side){
       const filtered = st.extra.filter(k => k !== kw);
       if (side === "target") dealcalcState.targetExtraKw = filtered; else dealcalcState.extraKw = filtered;
       delete st.kw[kw];
+      delete st.cnt[kw];
       dealcalcRenderKwGrid(side);
     });
   });
@@ -6824,7 +6898,7 @@ function dealcalcRenderKwPickerChips(){
 function dealcalcRenderKwPickerList(){
   const q = document.getElementById("dcKwPickerSearch").value.trim().toLowerCase();
   const st = dealcalcKwState(dealcalcKwPickerSide);
-  const already = new Set([...DEALCALC_SELF_KEYWORDS, ...dealcalcComputeAutoKw(dealcalcKwPickerSide), ...st.extra]);
+  const already = new Set([...DEALCALC_SELF_KEYWORDS, ...DEALCALC_STATUS_KW, ...dealcalcComputeAutoKw(dealcalcKwPickerSide), ...st.extra]);
   const list = Object.keys(KEYWORD_ICON_DATA)
     .filter(k => !already.has(k))
     .filter(k => !q || k.toLowerCase().includes(q))
@@ -6852,7 +6926,7 @@ function dealcalcOpenKwPicker(side){
 function dealcalcCloseKwPicker(){ document.getElementById("dcKwPickerModal").hidden = true; }
 function dealcalcPopulateAttackType(){
   const sel = document.getElementById("dcAttackType");
-  sel.innerHTML = `<option value="">(적 속성내성 자동입력용, 선택)</option>` +
+  sel.innerHTML = `<option value="">스킬 공격 유형 자동</option>` +
     ATTACK_TYPE_KW.map(t => `<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("");
 }
 function dealcalcEnemyCandidates(){
@@ -7039,22 +7113,56 @@ function dealcalcTargetsFor(sin, atype){
     typeMult: dealcalcTierValue("dcTypeRes", "dcTypeResCustom"),
   }];
 }
-// 최대 딜 가정: 더하기 코인은 전부 앞면, 빼기 코인은 전부 뒷면(앞면이면 위력이 깎이므로).
+// 앞면 확률 = 50% + 정신력% (정신력 -45~45)
+function dealcalcHeadsProb(sanity){ return Math.max(0.05, Math.min(0.95, 0.5 + (Number(sanity) || 0) / 100)); }
+function dealcalcBinomPmf(n, p){
+  const out = [];
+  let c = 1;
+  for (let k = 0; k <= n; k++){
+    out.push(c * Math.pow(p, k) * Math.pow(1 - p, n - k));
+    c = c * (n - k) / (k + 1);
+  }
+  return out;
+}
+// 코인별 위력. sk = {power, cp(코인 위력, 빼기 코인은 음수), coinCount, powerAdd(공격 위력 증가), paralyze(마비)}
+// maxPow: 최대 딜 가정 — 더하기 코인은 전부 앞면, 빼기 코인은 전부 뒷면(앞면이면 위력이 깎이므로).
+// dist: 앞면 확률 p로 굴렸을 때 위력 분포 [[위력, 확률], ...]. 마비 수만큼 앞 코인은 앞면이어도 코인 위력이 0.
+function dealcalcCoinPowers(sk, p){
+  const out = [];
+  for (let i = 1; i <= sk.coinCount; i++){
+    const live = Math.max(0, i - sk.paralyze);
+    const pow = h => Math.max(0, sk.power + sk.powerAdd + sk.cp * h);
+    const pmf = dealcalcBinomPmf(live, p);
+    out.push({maxPow: pow(sk.cp > 0 ? live : 0), dist: pmf.map((pr, h) => [pow(h), pr])});
+  }
+  return out;
+}
+function dealcalcHitDamage(pow, Ms, Md){
+  let d = pow * Math.max(1 + Ms, 0) * (1 + Md);
+  if (d > 0 && d < 1) d = 1;
+  if (pow > 0 && d < pow * 0.05) d = pow * 0.05;
+  return Math.floor(d);
+}
 // 합에서는 라운드를 진 쪽 코인만 1개씩 파괴되므로, 상대 코인 수만큼의 라운드를 전부 이기면(완승)
 // 내 코인은 하나도 잃지 않고 전부로 공격하며, 이긴 합 라운드당 피해량 +3%(최대 99라운드)가 붙는다.
-function dealcalcScenario(power, coinPower, coinCount, clashRounds, Ms0, Md){
-  const remaining = coinCount;
-  const coinTotal = dealcalcCoinRangeTotal(power, Math.max(0, coinPower), 1, coinCount);
+// crit = {pc: 코인마다 치명타 확률, max: 최대 딜 가정에서 치명타로 볼지, E: 치명타 시 Ms 가산치}
+function dealcalcScenario(sk, p, crit, clashRounds, Ms0, Md){
   const D = clashRounds > 0 ? Math.min(99, clashRounds) * 0.03 : 0;
   const Ms = Ms0 + D;
-  const msFactor = Math.max(1 + Ms, 0);
-  const mdFactor = 1 + Md;
-  let dmg = coinTotal * msFactor * mdFactor;
-  if (dmg > 0 && dmg < 1) dmg = 1;
-  const floor = coinTotal * 0.05;
-  if (coinTotal > 0 && dmg < floor) dmg = floor;
-  dmg = Math.floor(dmg);
-  return {remaining, coinTotal, D, Ms, Md, msFactor, mdFactor, dmg};
+  const coins = dealcalcCoinPowers(sk, p);
+  let maxDmg = 0, expDmg = 0;
+  coins.forEach(c => {
+    maxDmg += dealcalcHitDamage(c.maxPow, Ms + (crit.max ? crit.E : 0), Md);
+    c.dist.forEach(([pw, pr]) => {
+      expDmg += pr * ((1 - crit.pc) * dealcalcHitDamage(pw, Ms, Md) + crit.pc * dealcalcHitDamage(pw, Ms + crit.E, Md));
+    });
+  });
+  return {D, Ms, msFactor: Math.max(1 + Ms, 0), mdFactor: 1 + Md, coinPows: coins.map(c => c.maxPow), maxDmg, expDmg};
+}
+// 적중할 때마다 위력만큼 터지고 횟수가 1씩 줄어드는 키워드(파열·침잠)의 총량
+function dealcalcPerHitKw(potency, count, hits, reduce = 0){
+  if (potency <= 0 || count <= 0) return 0;
+  return Math.min(count, hits) * Math.max(0, potency - reduce);
 }
 function renderDealCalcView(){
   const bug = dealcalcBugMode();
@@ -7072,64 +7180,103 @@ function renderDealCalcView(){
     result.innerHTML = `<div class="dealcalc-note">가드/회피 계열 수비 스킬은 데미지를 입히지 않습니다. (버그판으로 전환하면 강제로 계산할 수 있습니다)</div>`;
     return;
   }
-  const power = o.power, coinPower = o.coin, sin = o.sin;
-  const coinCountAdj = Math.round(Number(document.getElementById("dcCoinCountAdj").value) || 0);
+  const sin = o.sin;
+  const num = id => Number(document.getElementById(id).value) || 0;
+  const clampStack = v => bug ? v : Math.max(-10, Math.min(10, v));
+  const coinCountAdj = Math.round(num("dcCoinCountAdj"));
   const coinCount = Math.max(1, o.coinCount + coinCountAdj);
   const dmgMultRaw = document.getElementById("dcDamageMult").value;
   const dmgMult = dmgMultRaw === "" ? 1 : Math.max(0, Number(dmgMultRaw) || 0);
 
-  const level = Math.max(1, Number(dealcalcSettings(dealcalcAttacker().sinner).level) || 60);
-  const atkBonus = Number(document.getElementById("dcAtkLevelBonus").value) || 0;
-  const ownedCost = Math.max(0, Number(document.getElementById("dcOwnedCost").value) || 0);
+  const attacker = dealcalcAttacker();
+  const st = dealcalcSettings(attacker.sinner);
+  const level = Math.max(1, Number(st.level) || 65);
+  const sanity = Number(st.sanity != null ? st.sanity : 45);
+  const headsP = dealcalcHeadsProb(sanity);
+  const atkBonus = num("dcAtkLevelBonus");
+  const ownedCost = Math.max(0, num("dcOwnedCost"));
   const wealthGift = dealcalcHasWealthGift();
   document.getElementById("dcWealthDetected").hidden = !wealthGift;
   const wealthBonus = wealthGift ? Math.min(20, Math.floor(ownedCost / 500)) : 0;
-  // 공격 레벨 = 인격 레벨 + 스킬별 공격 레벨 보정(게임 데이터의 skillLevelCorrection, 예: E.G.O -4) + 추가 보정
-  const atkLevel = level + (o.lvCorr || 0) + atkBonus + wealthBonus;
+  const activeRef = dealcalcActiveRef();
+  const res = activeRef && dealcalcResonanceOn() ? dealcalcResonance().get(activeRef.slot.uid) : null;
+  const resBonus = res ? res.bonus : 0;
+  // 공격 레벨 = 인격 레벨 + 스킬별 공격 레벨 보정(게임 데이터의 skillLevelCorrection, 예: E.G.O -4)
+  //            + 공격 레벨 증가 + 죄악 공명 + '부' 기프트
+  const atkLevel = level + (o.lvCorr || 0) + atkBonus + resBonus + wealthBonus;
 
-  const clashRounds = Math.max(0, Math.round(Number(document.getElementById("dcClashRounds").value) || 0));
-  const crit = document.getElementById("dcCrit").checked;
-  const staggerB = Number(document.getElementById("dcStagger").value) || 0;
-  const atype = document.getElementById("dcAttackType").value;
+  const clashRounds = Math.max(0, Math.round(num("dcClashRounds")));
+  const staggerB = num("dcStagger");
+  const atype = document.getElementById("dcAttackType").value || o.atype || "";
 
-  let selfPct = Number(document.getElementById("dcSelfDmgPct").value) || 0;
-  let vulnPct = Number(document.getElementById("dcTargetVulnPct").value) || 0;
+  // 코인 위력 증가는 빼기 코인이면 앞면일 때 더 깎이는 쪽으로 작용한다
+  const coinUp = num("dcStCoinUp");
+  const sk = {
+    power: o.power, coinCount,
+    cp: o.coin >= 0 ? o.coin + coinUp : o.coin - coinUp,
+    powerAdd: num("dcStPowerUp"),
+    paralyze: Math.max(0, Math.round(num("dcStParalyze"))),
+  };
+
+  // 치명타: 호흡(위력×5%, 횟수 1 이상) 또는 강제 적용. 치명타 시 Ms +0.2(+치명타 피해량 증가)
+  const poiseP = dealcalcState.selfKw["호흡"] || 0, poiseC = dealcalcState.selfKwCnt["호흡"] || 0;
+  const forceCrit = document.getElementById("dcCrit").checked;
+  const poisePc = poiseP > 0 && poiseC > 0 ? Math.min(1, poiseP * 0.05) : 0;
+  const crit = {pc: forceCrit ? 1 : poisePc, max: forceCrit || poisePc > 0, E: 0.2 + num("dcCritDmgPct") / 100};
+
+  let selfPct = num("dcSelfDmgPct");
+  let vulnPct = num("dcTargetVulnPct");
   if (!bug){ selfPct = Math.max(-100, Math.min(100, selfPct)); vulnPct = Math.max(-100, Math.min(100, vulnPct)); }
-  const manualMs = Number(document.getElementById("dcManualMs").value) || 0;
-  const manualMd = Number(document.getElementById("dcManualMd").value) || 0;
-  const E = crit ? 0.2 : 0;
-  const Md = (selfPct / 100) + (vulnPct / 100) + manualMd;
+  const dmgUp = clampStack(num("dcStDmgUp")), vuln = clampStack(num("dcStVuln"));
+  const manualMs = num("dcManualMs");
+  const manualMd = num("dcManualMd");
+  const G = dmgUp * 0.1 + selfPct / 100, H = vuln * 0.1 + vulnPct / 100;
+  const Md = G + H + manualMd;
 
+  const tkw = dealcalcState.targetKw, tcnt = dealcalcState.targetKwCnt;
+  const ruptureProt = Math.max(0, num("dcStRuptureProt"));
+  const rupture = dealcalcPerHitKw(tkw["파열"] || 0, tcnt["파열"] || 0, coinCount, ruptureProt);
+  const sinking = dealcalcPerHitKw(tkw["침잠"] || 0, tcnt["침잠"] || 0, coinCount);
+
+  const defUp = num("dcStDefUp");
   const targets = dealcalcTargetsFor(sin, atype);
-  let totalOne = 0, totalClash = 0;
+  const sum = {oneMax: 0, oneExp: 0, clashMax: 0, clashExp: 0};
   const perTarget = targets.map(t => {
+    const defLevel = t.defLevel + defUp;
     const A = dealcalcA(t.sinMult);
     const B = staggerB > 0 ? staggerB : dealcalcA(t.typeMult);
-    const C = dealcalcLevelAdv(atkLevel, t.defLevel);
-    const Ms0 = A + B + C + E + manualMs;
-
-    const oneSided = dealcalcScenario(power, coinPower, coinCount, 0, Ms0, Md);
-    const clashResult = clashRounds > 0 ? dealcalcScenario(power, coinPower, coinCount, clashRounds, Ms0, Md) : null;
-    const oneDmg = Math.floor(oneSided.dmg * dmgMult);
-    const clashDmg = clashResult ? Math.floor(clashResult.dmg * dmgMult) : null;
-    totalOne += oneDmg;
-    if (clashDmg != null) totalClash += clashDmg;
-    return {t, A, B, C, Ms0, oneSided, clashResult, oneDmg, clashDmg};
+    const C = dealcalcLevelAdv(atkLevel, defLevel);
+    const Ms0 = A + B + C + manualMs;
+    const one = dealcalcScenario(sk, headsP, crit, 0, Ms0, Md);
+    const clash = clashRounds > 0 ? dealcalcScenario(sk, headsP, crit, clashRounds, Ms0, Md) : null;
+    const fin = s => s && {max: Math.floor(s.maxDmg * dmgMult) + rupture, exp: s.expDmg * dmgMult + rupture};
+    const oneR = fin(one), clashR = fin(clash);
+    sum.oneMax += oneR.max; sum.oneExp += oneR.exp;
+    if (clashR){ sum.clashMax += clashR.max; sum.clashExp += clashR.exp; }
+    return {t, defLevel, A, B, C, one, clash, oneR, clashR};
   });
   const hasClash = clashRounds > 0;
-  const higher = hasClash && totalClash > totalOne ? "clash" : "one";
+  const higher = hasClash && sum.clashMax > sum.oneMax ? "clash" : "one";
+  const multi = targets.length > 1;
+  const pct = x => `${Math.round(x * 1000) / 10}%`;
+  const subLine = expTotal => {
+    const parts = [`기대 딜 <b>${Math.round(expTotal).toLocaleString()}</b> (정신력 ${sanity} → 앞면 ${pct(headsP)}${crit.pc > 0 && crit.pc < 1 ? ` · 치명타 ${pct(crit.pc)}` : ""})`];
+    if (rupture > 0) parts.push(`파열 피해 <b>${(rupture * targets.length).toLocaleString()}</b> 포함`);
+    return `<div class="dealcalc-scenario-sub">${parts.join("<br>")}</div>`;
+  };
 
   const blocks = [];
-  const multi = targets.length > 1;
   blocks.push(`<div class="dealcalc-scenario-grid">`);
   blocks.push(`<div class="dealcalc-scenario${higher === "one" && hasClash ? " is-higher" : ""}">
-    <div class="dealcalc-scenario-label">일방 공격${multi ? " 총합" : ""} (합 없음)</div>
-    <div class="dealcalc-scenario-value">${totalOne.toLocaleString()}</div>
+    <div class="dealcalc-scenario-label">일방 공격 최대 딜${multi ? " 총합" : ""} (합 없음)</div>
+    <div class="dealcalc-scenario-value">${sum.oneMax.toLocaleString()}</div>
+    ${subLine(sum.oneExp)}
   </div>`);
   if (hasClash){
     blocks.push(`<div class="dealcalc-scenario${higher === "clash" ? " is-higher" : ""}">
-      <div class="dealcalc-scenario-label">합 ${clashRounds}라운드 완승 후${multi ? " 총합" : ""}</div>
-      <div class="dealcalc-scenario-value">${totalClash.toLocaleString()}</div>
+      <div class="dealcalc-scenario-label">합 ${clashRounds}라운드 완승 후 최대 딜${multi ? " 총합" : ""}</div>
+      <div class="dealcalc-scenario-value">${sum.clashMax.toLocaleString()}</div>
+      ${subLine(sum.clashExp)}
     </div>`);
   } else {
     blocks.push(`<div class="dealcalc-scenario">
@@ -7139,24 +7286,42 @@ function renderDealCalcView(){
   }
   blocks.push(`</div>`);
 
+  // 키워드 중 이번 공격의 체력 피해에 직접 들어가지 않는 것들은 따로 알려준다
+  const kwNotes = [];
+  const skw = dealcalcState.selfKw, scnt = dealcalcState.selfKwCnt;
+  if (sinking > 0) kwNotes.push(`침잠: 대상 ${multi ? "1명당 " : ""}정신력 −${sinking.toLocaleString()} (정신력이 없는 대상이면 우울 피해 ${sinking.toLocaleString()})`);
+  if ((tkw["화상"] || 0) > 0 && (tcnt["화상"] || 0) > 0) kwNotes.push(`화상: 턴 종료 시 고정 피해 ${tkw["화상"]} (이후 횟수 −1)`);
+  if ((tkw["출혈"] || 0) > 0 && (tcnt["출혈"] || 0) > 0) kwNotes.push(`출혈: 대상이 공격 코인을 굴릴 때마다 고정 피해 ${tkw["출혈"]} (최대 ${tcnt["출혈"]}회)`);
+  if ((tkw["진동"] || 0) > 0 && (tcnt["진동"] || 0) > 0) kwNotes.push(`진동: '진동 폭발' 시 흐트러짐 피해 ${tkw["진동"]}`);
+  if ((skw["출혈"] || 0) > 0 && (scnt["출혈"] || 0) > 0) kwNotes.push(`자신 출혈: 이 스킬의 코인을 굴릴 때마다 자신이 ${skw["출혈"]} 피해 (최대 ${Math.min(coinCount, scnt["출혈"])}회)`);
+  if (poiseP > 0 && poiseC <= 0 && !forceCrit) kwNotes.push("호흡: 횟수가 0이라 치명타가 발동하지 않습니다 (위력과 횟수를 모두 입력)");
+  if (kwNotes.length) blocks.push(`<div class="dealcalc-note" style="margin-bottom:12px;">${kwNotes.map(escapeHTML).join("<br>")}</div>`);
+
   blocks.push(`<details class="dealcalc-advanced"><summary>상세 계산 보기${multi ? ` (대상 ${targets.length}명)` : ""}</summary>`);
-  perTarget.forEach(({t, A, B, C, Ms0, oneSided, clashResult, oneDmg, clashDmg}) => {
-    const shown = clashResult || oneSided;
-    if (multi) blocks.push(`<div class="dealcalc-result-target-label">${escapeHTML(t.label)} — 일방 ${oneDmg.toLocaleString()}${clashDmg != null ? ` · 합승 후 ${clashDmg.toLocaleString()}` : ""}</div>`);
+  perTarget.forEach(({t, defLevel, A, B, C, one, clash, oneR, clashR}) => {
+    const shown = clash || one;
+    if (multi) blocks.push(`<div class="dealcalc-result-target-label">${escapeHTML(t.label)} — 일방 ${oneR.max.toLocaleString()}${clashR ? ` · 합승 후 ${clashR.max.toLocaleString()}` : ""}</div>`);
+    const lvParts = [`인격 ${level}`];
+    if (o.lvCorr) lvParts.push(`스킬 ${o.lvCorr > 0 ? "+" : ""}${o.lvCorr}`);
+    if (atkBonus) lvParts.push(`증가 ${atkBonus > 0 ? "+" : ""}${atkBonus}`);
+    if (resBonus) lvParts.push(`공명 +${resBonus}`);
+    if (wealthBonus) lvParts.push(`부 +${wealthBonus}`);
+    const row = (k, v) => blocks.push(`<div class="dealcalc-breakdown-row"><span>${k}</span><span>${v}</span></div>`);
     blocks.push(`<div class="dealcalc-breakdown">`);
-    blocks.push(`<div class="dealcalc-breakdown-row"><span>코인 위력 합 (코인 ${coinCount}개, ${coinPower >= 0 ? "전부 앞면" : "빼기 코인이라 전부 뒷면"})</span><span>${oneSided.coinTotal.toLocaleString(undefined,{maximumFractionDigits:1})}</span></div>`);
-    blocks.push(`<div class="dealcalc-breakdown-row"><span>A 죄종내성</span><span>${A.toFixed(3)}</span></div>`);
-    blocks.push(`<div class="dealcalc-breakdown-row"><span>B 속성내성${staggerB>0?" (흐트러짐 적용)":""}</span><span>${B.toFixed(3)}</span></div>`);
-    blocks.push(`<div class="dealcalc-breakdown-row"><span>C 레벨차(공격${atkLevel}-방어${t.defLevel})</span><span>${C.toFixed(3)}</span></div>`);
-    blocks.push(`<div class="dealcalc-breakdown-row"><span>D 합 보너스</span><span>${(shown.D||0).toFixed(3)}</span></div>`);
-    blocks.push(`<div class="dealcalc-breakdown-row"><span>E 치명타</span><span>${E.toFixed(3)}</span></div>`);
-    blocks.push(`<div class="dealcalc-breakdown-row"><span>기타 보정치(Ms)</span><span>${manualMs.toFixed(3)}</span></div>`);
-    blocks.push(`<div class="dealcalc-breakdown-row"><span>Ms 합계 → 배율</span><span>${shown.Ms.toFixed(3)} → ×${shown.msFactor.toFixed(3)}</span></div>`);
-    blocks.push(`<div class="dealcalc-breakdown-row"><span>G 자신 피해량 증감</span><span>${(selfPct/100).toFixed(3)}</span></div>`);
-    blocks.push(`<div class="dealcalc-breakdown-row"><span>H 대상 취약·보호</span><span>${(vulnPct/100).toFixed(3)}</span></div>`);
-    blocks.push(`<div class="dealcalc-breakdown-row"><span>기타 보정치(Md)</span><span>${manualMd.toFixed(3)}</span></div>`);
-    blocks.push(`<div class="dealcalc-breakdown-row"><span>Md 합계 → 배율</span><span>${Md.toFixed(3)} → ×${shown.mdFactor.toFixed(3)}</span></div>`);
-    if (dmgMult !== 1) blocks.push(`<div class="dealcalc-breakdown-row"><span>피해량 배수(가중치·재발동)</span><span>×${dmgMult}</span></div>`);
+    row(`코인별 위력 (최대 딜 가정: ${o.coin >= 0 ? "전부 앞면" : "빼기 코인이라 전부 뒷면"}${sk.paralyze ? `, 마비 ${sk.paralyze}` : ""})`, one.coinPows.join(" / "));
+    row("A 죄종내성", A.toFixed(3));
+    row(`B 속성내성${atype ? ` (${escapeHTML(atype)})` : ""}${staggerB > 0 ? " (흐트러짐 적용)" : ""}`, B.toFixed(3));
+    row(`C 레벨차 (공격 ${atkLevel} = ${lvParts.join(" ")} / 방어 ${defLevel})`, C.toFixed(3));
+    row("D 합 보너스", (shown.D || 0).toFixed(3));
+    row(`E 치명타${crit.max ? (forceCrit ? " (강제)" : ` (호흡 ${poiseP} → 코인마다 ${pct(crit.pc)})`) : ""}`, (crit.max ? crit.E : 0).toFixed(3));
+    row("기타 보정치(Ms)", manualMs.toFixed(3));
+    row("Ms 합계 → 배율 (치명타 제외)", `${shown.Ms.toFixed(3)} → ×${shown.msFactor.toFixed(3)}`);
+    row(`G 가하는 피해 증감 (피해량 증가 ${dmgUp}${selfPct ? ` + ${selfPct}%` : ""})`, G.toFixed(3));
+    row(`H 받는 피해 증감 (취약 ${vuln}${vulnPct ? ` + ${vulnPct}%` : ""})`, H.toFixed(3));
+    row("기타 보정치(Md)", manualMd.toFixed(3));
+    row("Md 합계 → 배율", `${Md.toFixed(3)} → ×${shown.mdFactor.toFixed(3)}`);
+    if (dmgMult !== 1) row("피해량 배수(가중치·재발동)", `×${dmgMult}`);
+    if (rupture > 0) row(`파열 (적중 ${Math.min(coinCount, tcnt["파열"] || 0)}회 × ${Math.max(0, (tkw["파열"] || 0) - ruptureProt)})`, `+${rupture}`);
     blocks.push(`</div>`);
   });
   blocks.push(`</details>`);
@@ -7175,7 +7340,7 @@ function renderDealCalcView(){
     blocks.push(`<details class="dealcalc-advanced"><summary>같은 턴의 다른 슬롯 효과 (참고 — 필요하면 기타 보정치에 반영)</summary>${others.join("")}</details>`);
   }
   if (!bug){
-    blocks.push(`<div class="dealcalc-note" style="margin-top:12px;">크리에이티브 모드: 내성 배율은 실제 게임에 존재하는 5단계로 제한되고, 자신 피해량 증감·대상 취약/보호는 ±100%로 제한됩니다. 버그판으로 전환하면 임의 배율·무제한 수치를 입력할 수 있습니다.</div>`);
+    blocks.push(`<div class="dealcalc-note" style="margin-top:12px;">크리에이티브 모드: 내성 배율은 실제 게임에 존재하는 5단계로 제한되고, 피해량 증가·취약은 게임 최대치인 ±10, 기타 가하는/받는 피해 증감은 ±100%로 제한됩니다. 버그판으로 전환하면 임의 배율·무제한 수치를 입력할 수 있습니다.</div>`);
   }
   result.innerHTML = blocks.join("");
 }
@@ -7193,8 +7358,17 @@ function dealcalcWireInputs(){
     dealcalcRefreshAll();
   });
   document.getElementById("dcLevel").addEventListener("input", () => {
-    dealcalcSettings(dealcalcState.sinner).level = Math.max(1, Math.min(65, Number(document.getElementById("dcLevel").value) || 60));
+    dealcalcSettings(dealcalcState.sinner).level = Math.max(1, Math.min(65, Number(document.getElementById("dcLevel").value) || 65));
     dealcalcRenderSkillDetail();
+    renderDealCalcView();
+  });
+  document.getElementById("dcSanity").addEventListener("input", () => {
+    const v = Number(document.getElementById("dcSanity").value);
+    dealcalcSettings(dealcalcState.sinner).sanity = Math.max(-45, Math.min(45, Number.isFinite(v) ? Math.round(v) : 45));
+    renderDealCalcView();
+  });
+  document.getElementById("dcResonance").addEventListener("change", () => {
+    dealcalcRenderSlotBar();
     renderDealCalcView();
   });
   document.getElementById("dcSelfKwOpenPicker").addEventListener("click", () => dealcalcOpenKwPicker("self"));
@@ -7211,9 +7385,10 @@ function dealcalcWireInputs(){
     if (!document.getElementById("dcKwPickerModal").hidden) dealcalcCloseKwPicker();
     if (!document.getElementById("dcGiftPickerModal").hidden) dealcalcCloseGiftPicker();
   });
-  ["dcAtkLevelBonus","dcCrit","dcClashRounds","dcCoinCountAdj","dcDamageMult","dcOwnedCost",
+  ["dcAtkLevelBonus","dcCrit","dcCritDmgPct","dcClashRounds","dcCoinCountAdj","dcDamageMult","dcOwnedCost",
    "dcSelfDmgPct","dcManualMs","dcManualMd","dcDefLevel","dcSinRes","dcSinResCustom","dcTypeRes",
-   "dcTypeResCustom","dcStagger","dcTargetVulnPct"].forEach(id => {
+   "dcTypeResCustom","dcStagger","dcTargetVulnPct","dcStPowerUp","dcStCoinUp","dcStDmgUp","dcStParalyze",
+   "dcStVuln","dcStDefUp","dcStRuptureProt"].forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener("input", () => { dealcalcSyncCustomInputs(); renderDealCalcView(); });
     el.addEventListener("change", () => { dealcalcSyncCustomInputs(); renderDealCalcView(); });
