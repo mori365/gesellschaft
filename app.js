@@ -4286,7 +4286,7 @@ document.getElementById("imageLightboxBackdrop").addEventListener("click", close
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !imageLightbox.hidden) closeImageLightbox(); });
 
 document.body.addEventListener("click", e => {
-  const lightboxTrigger = e.target.closest(".card-banner, .ego-card-portrait");
+  const lightboxTrigger = e.target.closest(".card-banner, .ego-card-portrait, .enemy-detail-image");
   if (lightboxTrigger){
     const fullSrc = lightboxTrigger.dataset.full || lightboxTrigger.src;
     openImageLightbox(fullSrc, lightboxTrigger.alt, lightboxTrigger.classList.contains("ego-card-portrait"));
@@ -5879,9 +5879,11 @@ function enemyCardHTML(group){
   const img = e.image || (group.find(g => g.e.image) && group.find(g => g.e.image).e.image);
   const groupLabel = enemyGroupLabel(e);
   const isLoneSub = group.length === 1 && e.role === "sub";
+  // 10장처럼 한 장이 여러 편(상·중·하편)으로 나뉜 경우 편 이름을 함께 보여준다
+  const chapterText = e.part ? `${e.chapter} · ${e.part}` : e.chapter;
   const tagText = isLoneSub
-    ? `${e.chapter} · ${groupLabel || ""} 하위 개체`
-    : `${e.chapter}${groupLabel ? " · " + groupLabel : ""}`;
+    ? `${chapterText} · ${groupLabel || ""} 하위 개체`
+    : `${chapterText}${groupLabel ? " · " + groupLabel : ""}`;
   return `
     <div class="card enemy-card" data-idxs="${idxs.join(",")}">
       ${img ? `<img class="card-banner enemy-card-banner" src="${img}" alt="">` : ""}
@@ -5940,7 +5942,11 @@ function renderEnemyGrid(){
   grid.innerHTML = groups.map(enemyCardHTML).join("");
   document.getElementById("enemyEmptyState").hidden = groups.length > 0;
   grid.querySelectorAll(".enemy-card").forEach(el => {
-    el.addEventListener("click", () => openEnemyDetail(el.dataset.idxs.split(",").map(Number)));
+    el.addEventListener("click", ev => {
+      // 카드 이미지를 누르면 상세 대신 이미지 팝업만 연다 (팝업은 문서 전체 클릭 처리기에서 연다)
+      if (ev.target.closest(".enemy-card-banner")) return;
+      openEnemyDetail(el.dataset.idxs.split(",").map(Number));
+    });
   });
 }
 function renderEnemyView(){

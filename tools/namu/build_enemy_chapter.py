@@ -7,10 +7,13 @@
     # 이상 없으면 --dry 없이 실행 (이미지 다운로드, 요청 간 2초)
     python tools/namu/build_enemy_chapter.py "Limbus Company/전투/10장/상편=10장 상편" ...
 
-- 인자 형식: "나무위키 문서 이름=사이트에 표시할 장 이름". chapterNum은 기존 데이터의 최댓값 다음부터 순서대로 매긴다.
+- 인자 형식: "나무위키 문서 이름=장 이름" 또는 "나무위키 문서 이름=장 이름=편 이름".
+  한 장이 여러 문서(편)로 나뉘면 장 이름을 같게 주고 편 이름을 붙인다 → 사이트에서 한 장 버튼으로 묶이고 카드에 편이 표시됨.
+  예) "Limbus Company/전투/10장/상편=10장=상편" "Limbus Company/전투/10장/중편=10장=중편"
+  chapterNum은 같은 장이 이미 있으면 그 값, 새 장이면 기존 최댓값 다음부터 매긴다.
 - 보스의 'N페이즈' 제목은 이름을 보스 이름으로 바꾸고 phase에 기록, 그 아래 개체는 role='sub'.
 - 스테이터스가 없는 항목은 버린다. 스킬 수와 아이콘 수가 다르면 skillIcons(아이콘 모음)로 둔다.
-- 2026-10-08 10장(상·중·하편) 44개를 이 스크립트로 넣었다."""
+- 2026-10-08 10장(상·중·하편) 44개를 이 스크립트로 넣었다 (chapter "10장" + part "상편/중편/하편")."""
 import json, os, re, sys, time, io, urllib.request, html as H
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import paths
@@ -54,15 +57,19 @@ def skill_icons(seg):
         out.append(u)
     return out
 
-def current_max_chapter_num():
+def chapter_nums():
     src = open(os.path.join(ROOT, 'enemy_data.js'), encoding='utf-8').read()
-    return max(int(n) for n in re.findall(r'chapterNum:(\d+)', src))
+    return {c: int(n) for c, n in re.findall(r'chapter:"([^"]+)",chapterNum:(\d+)', src)}
 
 def extract(parts):
     records = []
-    start = current_max_chapter_num() + 1
-    for k, (title, chapter) in enumerate(parts):
-        cnum = start + k
+    nums = chapter_nums()
+    for spec in parts:
+        title, chapter = spec[0], spec[1]
+        part = spec[2] if len(spec) > 2 else None
+        if chapter not in nums:
+            nums[chapter] = max(nums.values()) + 1
+        cnum = nums[chapter]
         html = fetch_page(title)
         heads = [(m.group(2), m.end(), m.start()) for m in P.HEADING_RE.finditer(html)]
         bounds = {num: (end, heads[i + 1][2] if i + 1 < len(heads) else len(html)) for i, (num, end, _) in enumerate(heads)}
@@ -75,6 +82,7 @@ def extract(parts):
             parent = num.rsplit('.', 1)[0]
             grand = parent.rsplit('.', 1)[0] if '.' in parent else None
             rec = dict(e); rec['chapter'] = chapter; rec['chapterNum'] = cnum
+            if part: rec['part'] = part
             rec['_portrait'] = portrait(seg); rec['_icons'] = skill_icons(seg)
             has_children = any(n.startswith(num + '.') for n in bounds)
             if PHASE.match(e['name']):                       # 보스의 N페이즈 → 이름은 보스, phase 기록
@@ -103,7 +111,7 @@ def save_image(url, d):
 
 def main():
     dry = '--dry' in sys.argv
-    parts = [tuple(a.split('=', 1)) for a in sys.argv[1:] if a != '--dry']
+    parts = [tuple(a.split('=')) for a in sys.argv[1:] if a != '--dry']
     if not parts:
         print(__doc__); return
     records = extract(parts)
@@ -124,7 +132,7 @@ def main():
             r['skillIcons'] = [{'alt': '', 'icon': img(u, 'images/enemy_skills')} for u in icons]
         else:
             r['skillIcons'] = None
-        report.append(f"{r['chapter']} | {r['name']} | group={r.get('group')} role={r.get('role')} phase={r.get('phase')} | sk={len(sk)} icons={len(icons)} | img={'Y' if r['image'] else 'N'} | pas={len(r.get('passives') or [])}")
+        report.append(f"{r['chapter']}{' ' + r['part'] if r.get('part') else ''} | {r['name']} | group={r.get('group')} role={r.get('role')} phase={r.get('phase')} | sk={len(sk)} icons={len(icons)} | img={'Y' if r['image'] else 'N'} | pas={len(r.get('passives') or [])}")
     json.dump(records, open(OUT_JSON, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     open(OUT_REPORT, 'w', encoding='utf-8').write('\n'.join(report))
     print('\n'.join(report))

@@ -423,11 +423,11 @@
   .enemy-tabs-sticky .enemy-ch-tabs{ flex-wrap:wrap; width:auto; margin-bottom:6px; }
   .enemy-tabs-sticky .enemy-sub-tabs{ margin-bottom:0; }
   .enemy-card{ cursor:pointer; transition:border-color .12s; }
-  .enemy-card-banner{
+  .enemy-card-banner{ cursor:zoom-in;
     object-fit:contain; object-position:center; background:var(--surface-2);
     padding:6px; box-sizing:border-box;
   }
-  .enemy-detail-image{
+  .enemy-detail-image{ cursor:zoom-in;
     display:block; max-width:180px; max-height:220px; margin:0 auto 10px;
     border-radius:10px; background:var(--surface-2); object-fit:contain; padding:6px; box-sizing:border-box;
   }

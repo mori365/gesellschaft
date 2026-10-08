@@ -47,6 +47,7 @@ python tools/namu/build_enemy_chapter.py --dry "Limbus Company/전투/11장=11�
 python tools/namu/build_enemy_chapter.py "Limbus Company/전투/11장=11장"         # 이미지 받기
 python tools/namu/append_enemies.py
 ```
+한 장이 여러 문서(편)로 나뉘면 `"문서=장=편"` 형식으로 장 이름을 같게 줍니다 (예: `"Limbus Company/전투/10장/상편=10장=상편"`).
 `--dry` 보고서(`tools/_work/reports/enemy_new_report.txt`)에서 이름·그룹·페이즈·스킬/아이콘 수·초상화 유무를 확인한 뒤 진행합니다.
 나무위키 HTML 구조(클래스 이름 등)가 바뀌면 `enemy_parser.py`가 제목을 못 찾을 수 있습니다("NO HEADINGS FOUND").
 
