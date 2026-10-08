@@ -369,6 +369,14 @@ const DATA = [
         "supportPassiveEffect":  "전투 시작 시, 정신력이 가장 낮은 아군의 정신력 15 회복\n- 더하기 코인을 사용하는 인격에게 우선으로 적용\n- 대상이 검지 소속이면 효과가 강화되어 추가로 피해량 증가 1 부여\n- 침식, 패닉 등 정신력을 회복할 수 없는 대상에게는 적용되지 않음"
     },
     {
+        "sinner":  "돈키호테",
+        "identity":  "오트쿠튀르::르누아르 브랜드 매니저",
+        "rarity":  "000",
+        "supportPassiveName":  "진형 보존",
+        "condition":  "질투 2 + 나태 2 보유",
+        "supportPassiveEffect":  "전투 시작 시 전장에 있는 아군 충전 인격 1명당, 이번 턴에 모든 아군 충전 인격이 받는 피해량 -2% (최소 -10%)"
+    },
+    {
         "sinner":  "료슈",
         "identity":  "LCB 수감자",
         "rarity":  "0",
@@ -1898,6 +1906,13 @@ const KEYWORD_DEFS = {
   "두 가위": "최댓값 1. 공격 레벨 +3, 방어 레벨 +3. 충전 인격이면 스킬 사용 시 정신력 5 회복(턴당 1회). 기본 스킬 적중 시 해당 코인 최종 피해량의 5%만큼 참격 피해. 턴 종료 시 소멸.",
   "꽃가위": "최댓값 2. 수치당 가하는 피해량 +7%.",
   "감각 균열": "최댓값 5. 자신을 제외한 아군 피격 시 자신의 진동 횟수 1 증가 후 이 효과 수치 1 감소(스킬당 1회). 자신을 제외한 아군이 없으면 피격 시 진동 위력 2를 얻고 수치 1 감소(스킬당 1회). 크리티컬 공격으로 피격 시 받는 피해량 +(자신의 진동 위력)% (최대 15%).",
+  "보존 신역": "최댓값 5. 모든 아군 인격: 스킬 사용 시 각 아군의 최대 체력의 (돈키호테의 보존 위력 × 2)%만큼 보호막(턴당 1회, 최대 10%). 르누아르 소속 인격: 공격 레벨 +(보존 위력/3)(최대 2), 방어 레벨 +(보존 위력/2)(최대 3). 모든 적: 속도 최솟값·최댓값 -1, 진동 폭발 시 받는 흐트러짐 피해량 +10%, 충전 횟수 또는 특수 충전을 소모하는 스킬로 받는 피해량 +10%(르누아르 소속 아군 인격의 스킬이면 2배). 턴 종료 시 수치 1 감소.",
+  "검은 신의 가호": "최댓값 100. 턴 시작 시 자신의 최대 체력의 (수치/5)%만큼 보호막. 25 이상이면 기본 공격 스킬 사용 시 모든 코인이 파괴 불가 코인이 됨. 40 이상이면 흐트러짐 상태가 되지 않음(강제 흐트러짐 제외).",
+  "약속된 못": "최댓값 30. 스킬 효과로 진동 폭발 시 수치 1당 나태 피해 1(최대 10, 스킬당 1회). 턴 종료 시 수치가 4 이상이면 다음 턴에 속박 1. 턴 시작 시 전장에 오트쿠튀르::르누아르 브랜드 매니저 돈키호테가 없으면 소멸.",
+  "보존": "특수 충전. 횟수 최댓값 20. 충전 위력·횟수를 증가/감소시키는 효과를 동일하게 적용받으며, 턴 종료 시 횟수 1 감소.",
+  "진동 - 보존": "진동 폭발 시 진동 위력의 (60 + 공격자의 충전 위력 또는 특수 충전 × 8)%만큼 나태 피해를 입고 횟수 1 감소(최대 120%). 르누아르 소속 캐릭터의 스킬·패시브 효과로 진동 폭발 시에는 횟수가 감소하지 않음. 진동 폭발 시 위력만큼 흐트러짐 손상, 턴 종료 후 횟수 1 감소.",
+  "잿빛 탄환": "특수 탄환. 최댓값 5. '구멍' E.G.O를 제외한 외부 효과로 얻거나 값이 증가할 수 없음.",
+  "검은 날개": "최댓값 12. 턴 시작 시 (수치/4)만큼 충전 횟수 증가(소수점 버림), 수치 4당 공격 레벨 증가 1. 자신의 충전·호흡을 얻거나 소모하는 스킬 피해량 +(수치)%.",
 };
 
 
@@ -2061,6 +2076,7 @@ const IDENTITY_KEYWORDS_DATA = {
   "돈키호테|W사 3등급 정리 요원": ["충전","파열"],
   "돈키호테|남부 시 협회 5과 부장": ["호흡"],
   "돈키호테|LCB 수감자": ["출혈"],
+  "돈키호테|오트쿠튀르::르누아르 브랜드 매니저": ["진동","충전"],
   "료슈|흑운회 와카슈": ["출혈"],
   "료슈|남부 세븐 협회 6과": ["파열"],
   "료슈|LCB 수감자": ["호흡"],
@@ -2335,6 +2351,7 @@ const IDENTITY_SKILL_PROFILE = {
   "돈키호테|로보토미 E.G.O::사랑과 증오의 이름으로": {skills:[{sin:"분노",tier:1,num:3},{sin:"질투",tier:2,num:2},{sin:"질투",tier:3,num:1},{sin:"분노",tier:1,num:0},{sin:"질투",tier:2,num:0},{sin:"질투",tier:3,num:0}],defense:[{sin:"질투",tier:4}]},
   "돈키호테|흑수 - 미": {skills:[{sin:"색욕",tier:1,num:3},{sin:"탐식",tier:2,num:2},{sin:"우울",tier:3,num:1}],defense:[{sin:"탐식",tier:1}]},
   "돈키호테|검지 대행자 - 개화 E.G.O::대행": {skills:[{sin:"색욕",tier:1,num:3},{sin:"오만",tier:2,num:2},{sin:"우울",tier:3,num:1},{sin:"색욕",tier:1,num:0},{sin:"오만",tier:2,num:0},{sin:"우울",tier:3,num:0}],defense:[{sin:"우울",tier:1},{sin:"우울",tier:1}]},
+  "돈키호테|오트쿠튀르::르누아르 브랜드 매니저": {skills:[{sin:"오만",tier:1,num:3},{sin:"질투",tier:2,num:2},{sin:"나태",tier:3,num:1}],defense:[{sin:"나태",tier:1}]},
   "료슈|LCB 수감자": {skills:[{sin:"탐식",tier:1,num:3},{sin:"색욕",tier:2,num:2},{sin:"오만",tier:3,num:1}],defense:[{sin:"탐식",tier:4}]},
   "료슈|남부 세븐 협회 6과": {skills:[{sin:"나태",tier:1,num:3},{sin:"오만",tier:2,num:2},{sin:"탐식",tier:3,num:1}],defense:[{sin:"탐식",tier:1}]},
   "료슈|흑운회 와카슈": {skills:[{sin:"탐식",tier:1,num:3},{sin:"오만",tier:2,num:2},{sin:"색욕",tier:3,num:1}],defense:[{sin:"색욕",tier:4}]},
@@ -2530,6 +2547,7 @@ const IDENTITY_SKILL_DETAIL = {
   "돈키호테|로보토미 E.G.O::사랑과 증오의 이름으로": {skills:[{name:"관리자 나리의 명에 따라 등장!",power:"3",coin:"+4",coinCount:2,coinEffects:{2:"[적중시] 자신의 사랑/증오 횟수 3 증가 [적중시] 파열 3 부여"}},{name:"사랑으로! 욥!",power:"6",coin:"+5",coinCount:2,coinEffects:{1:"[적중시] 자신의 사랑/증오 횟수 4 증가",2:"[적중시] 파열 2 부여 [적중시] 다음 턴에 메인 타겟에게 악당 표식 부여"}},{name:"아르카나 비트!! / 마이너 아르카나 슬레이브!!!",power:"5",coin:"+4",coinCount:0,coinEffects:{1:"파괴 불가 코인",2:"파괴 불가 코인 [파괴되지 않고 적중시] 파열 2 부여",3:"파괴 불가 코인 [파괴되지 않고 적중시] 파열 2 부여"}}],defense:{name:"단기 영창",power:"2",coin:"+10",coinCount:0,coinEffects:{1:"파괴 불가 코인"}}},
   "돈키호테|흑수 - 미": {skills:[{name:"돌파",power:"3",coin:"+4",coinCount:2,coinEffects:{1:"[적중시] 파열 횟수 1 증가 [적중시] 침잠 횟수 1 증가",2:"[적중시] 파열 1 부여 [적중 시] 침잠 1 부여"}},{name:"파죽지세",power:"4",coin:"+4",coinCount:3,coinEffects:{1:"[적중시] 파열 횟수 1 증가",2:"[적중시] 침잠 횟수 1 증가",3:"[적중시] 파열 2 부여 [적중시] 침잠 2 부여 [적중시] 자신에게 발각[發角] 이 있으면, 수치 1당 이 코인 최종 피해량의 10%만큼 참격 피해 (최대 30%)"}},{name:"파쇄각 [破碎角]",power:"4",coin:"+3",coinCount:4,coinEffects:{2:"[적중시] 파열 횟수 2 증가 [적중시] 침잠 횟수 2 증가",3:"[적중시] 파열 2 부여 [적중시] 침잠 2 부여",4:"대상에게 패닉 타입 변경 효과가 있으면, 수치 1당 피해량 +10% (최대 30%) [적중시] 이 코인 최종 피해량의 25%만큼 참격 피해 - 대상에게 파쇄흔 이 있으면 효과가 강화되어, 대신 50%만큼 참격 피해 [적중시] 다음 턴에 파쇄흔 3 부여 - 대상에게 패닉 타입 변경 효과가 있으면, 추가로 대상의 침잠 횟수 3 증가 (턴당 1회)"}}],defense:{name:"가로막는 것들을 모조리 박살내주겠네!",power:"5",coin:"+4",coinCount:2,coinEffects:{1:"[적중시] 파열 1 부여",2:"[적중시] 침잠 1 부여"}}},
   "돈키호테|검지 대행자 - 개화 E.G.O::대행": {skills:[{name:"머리 으깨기",power:"3",coin:"+4",coinCount:2,coinEffects:{1:"[적중시] 침잠 2 부여",2:"[적중시] 호흡 1 얻음 [크리티컬 적중 시] 자신의 호흡 횟수 1 증가"}},{name:"조,조용히 하시게",power:"4",coin:"+4",coinCount:3,coinEffects:{1:"[적중시] 침잠 1 부여",2:"[적중시] 침잠 2 부여",3:"[적중시] 자신의 호흡 횟수 1 증가 [크리티컬 적중 시] 침잠 횟수 1 증가"}},{name:"빠,빨리 지령을 수행해야만…",power:"6",coin:"+6",coinCount:2,coinEffects:{1:"[적중시] 호흡 2 얻음",2:"해금 단계 1당 피해량 +40% (최대 120%) [적중시] 침잠 2 부여, 침잠 횟수 1 증가 [크리티컬 적중 시] 침잠 1 부여, 침잠 횟수 1 증가"}}],defense:{name:"지령이 하사한 지령으로 만들어진 천",power:"3",coin:"+3",coinCount:3,coinEffects:{1:"[적중시] 호흡 1 얻음",2:"[적중시] 침잠 1 부여",3:"[적중시] 침잠 1 부여"}}},
+  "돈키호테|오트쿠튀르::르누아르 브랜드 매니저": {skills:[{name:"못 박히라",sin:"오만",power:"3",coin:"+4",coinCount:2,coinEffects:{1:"[사용시] 대상의 진동 위력과 약속된 못의 합 4당, 최종 위력 +1 [사용시] 자신의 보존 위력이 3 이상이면, 코인 위력 +1, 피해량 +40% [사용시] 자신과 자신을 제외한 충전 횟수가 가장 적은 르누아르 소속 아군 인격 1명의 충전 횟수 4 증가 (턴당 1회) [적중시] 진동 횟수 2 증가",2:"[적중시] 자신의 보존 횟수 6 증가"}},{name:"못 생기라",sin:"질투",power:"6",coin:"+5",coinCount:2,coinEffects:{1:"[사용시] 대상의 진동 위력과 약속된 못의 합 4당, 최종 위력 +1 (최대 3) [사용시] 자신의 보존 위력이 3 이상이면, 코인 위력 +1, 피해량 +30% [공격 시작 전] 최대 공명 수 1당, 마지막 코인의 최종 위력 +1 (최대 4) [적중시] 약속된 못 1 부여 [적중시] 진동 4 부여",2:"[적중시] 자신의 보존 횟수 8 증가 [적중시] 진동 횟수 3 증가 [적중시] 진동 폭발. 대상의 진동 횟수 1 감소"}},{name:"탄생을 끊으리라!",sin:"나태",power:"5",coin:"+4",coinCount:3,coinEffects:{1:"[전투 시작시] 보존 신역 3 얻음 (턴당 1회) [전투 시작시] 자신과 자신을 제외한 속도가 가장 빠른 르누아르 소속 아군 1명에게 공격 레벨 증가 2, 방어 레벨 증가 2 부여 (턴당 1회) [사용시] 대상의 진동 위력과 약속된 못의 합 6당, 코인 위력 +1 (최대 2) [사용시] 자신의 보존 위력이 3 이상이면, 코인 위력 +1, 피해량 +40% [공격 시작 전] 최대 공명 수 1당, 마지막 코인의 최종 위력 +1 (최대 4) [적중시] 약속된 못 1 부여 [적중시] 진동 4 부여",2:"[적중시] 진동 횟수 3 증가",3:"[적중시] 자신의 보존 횟수 4 증가 [적중시] 진동 - 보존으로 진폭 변환 [적중시] 진동 폭발. 대상의 진동 횟수 1 감소 [적중시] 대상의 약속된 못이 3 이상이면, 진동 폭발. 대상의 진동 횟수 1 감소"}}],defense:{name:"묵시",sin:"나태",power:"5",coin:"+4",coinCount:2,coinEffects:{1:"[반격] [전투 시작시] 보존 신역 3 얻음 (턴당 1회) [전투 시작시] 자신과 자신을 제외한 정신력이 가장 낮은 르누아르 소속 아군 인격 1명의 정신력 6 회복 (턴당 1회) [전투 시작시] 자신의 검은 신의 가호가 - 100이면, 대신 '거듭 내리쳐, 탄생을 끊으리라!'로 발동됨 (턴당 1회, 이 효과는 일방 공격에도 발동함) - 100 미만이면, 자신의 최대 체력의 (검은 신의 가호/10)%만큼 보호막 얻음 (턴당 1회) [전투 시작시] 자신의 보존 횟수 4 증가 (턴당 1회) [사용시] 대상의 진동 위력과 약속된 못의 합 6당, 코인 위력 +1 (최대 2) [사용시] 자신의 보존 위력이 3 이상이면, 코인 위력 +1, 피해량 +20% [적중시] 약속된 못 1 부여 [적중시] 진동 횟수 2 증가",2:"[적중시] 자신의 보존 횟수 4 증가"}}},
   "료슈|LCB 수감자": {skills:[{name:"칠하기",power:"4",coin:"+7",coinCount:1,coinEffects:{1:"[적중시] 다음 턴에 호흡 2 얻음"}},{name:"흩뿌리기",power:"4",coin:"+5",coinCount:2,coinEffects:{1:"대상이 이번 턴에 피해를 받은 상태면 피해량 +30%",2:"대상이 이번 턴에 피해를 받은 상태면 피해량 +30%"}},{name:"그려내기",power:"5",coin:"+3",coinCount:3,coinEffects:{2:"[적중시] 다음 턴에 호흡 2 얻음"}}],defense:{name:"회피",power:"2",coin:"+10",coinCount:1,coinEffects:{}}},
   "료슈|남부 세븐 협회 6과": {skills:[{name:"슬래시",power:"4",coin:"+8",coinCount:1,coinEffects:{1:"[적중시] 파열 2 부여"}},{name:"어퍼 슬래시",power:"4",coin:"+14",coinCount:1,coinEffects:{1:"[적중시] 방어 레벨 감소 2 부여"}},{name:"스워시",power:"4",coin:"+5",coinCount:3,coinEffects:{1:"[적중시] 다음 턴에 참격 취약 3 부여"}}],defense:{name:"반격",power:"8",coin:"+4",coinCount:1,coinEffects:{1:"[적중시] 참격 취약 1 부여"}}},
   "료슈|LCCB 대리": {skills:[{name:"밀치기",power:"5",coin:"+5",coinCount:1,coinEffects:{1:"[크리티컬 적중 시] 대상의 정신력 8 감소"}},{name:"타.무",power:"4",coin:"+5",coinCount:2,coinEffects:{1:"[적중시] 호흡 2 얻음 [크리티컬 적중 시] 공격 레벨 감소 2 부여",2:"[적중시] 호흡 1 얻음 [크리티컬 적중 시] 공격 레벨 감소 1 부여"}},{name:"대.박",power:"4",coin:"+3",coinCount:3,coinEffects:{1:"[크리티컬 적중 시] 자신의 호흡 횟수 1 증가",2:"[크리티컬 적중 시] 자신의 호흡 횟수 1 증가",3:"탄환 1 소모 [크리티컬 적중 시] 진동 , 파열 의 위력과 횟수가 2배로 부여됨 [적중시] 진동 4 부여, 진동 횟수 2 증가 [적중시] 파열 4 부여, 파열 횟수 2 증가 [적중시] 진동 폭발"}}],defense:{name:"가드",power:"8",coin:"+8",coinCount:1,coinEffects:{}}},
@@ -2721,6 +2739,7 @@ const IDENTITY_PASSIVE = {
   "돈키호테|로보토미 E.G.O::사랑과 증오의 이름으로": [{name:"사랑의 마법소녀 / 증오의 여왕",sin:"질투",count:"4",effect:"사랑/증오 당, 피해량 +2% (최대 10%) 전투 시작 시, 매지컬 아르카나 1 얻음"},{name:"사랑과 증오의 이름으로 - !E.G.O 장비 동기화율 초과주의!",sin:null,count:null,effect:"전투 중 누적으로 자신의 사랑/증오 횟수 10을 소모할 때마다, 사랑/증오 1 얻음 스테이지 시작 시 히스테리 가 없으면, 히스테리 효과를 얻음 스테이지 시작 시 사랑/증오 가 없으면, 사랑/증오 효과를 얻음 턴 시작 시 - 정신력이 0 이상이면, 마법소녀 등장! 얻음, 역변-리버스드 제거 - 정신력이 0 미만이면, 역변-리버스드 얻음, 마법소녀 등장! 제거 자신의 기본 공격 스킬의 정신력 소모 효과에 의해서 정신력이 -40 미만으로 내려가지 않음"}],
   "돈키호테|흑수 - 미": [{name:"발파각쇄",sin:"탐식",count:"3",effect:"대상의 정신력이 0 미만이면, 피해량이 (-대상의 정신력/3)%만큼 증가 (최대 15%, 소수점 버림) 대상의 파열 과 침잠 의 합 2당 피해량 +1% (최대 15%) - 정신력이 없는 대상이면, 이 효과와 최댓값이 2배로 증가 자신에게 발각[發角] 이 있으면, 적을 공격할 때 기본 스킬 마지막 코인의 피해량 +15% - 수비 스킬을 장착한 스킬 슬롯 공격 시, 대신 마지막 코인의 피해량 +30% - 합 가능 수비 스킬과 합 진행 시, 추가로 합 위력 +3"},{name:"망양지탄 [亡羊之嘆]",sin:null,count:null,effect:"홍원 군주 홍루와 존명 발동 시, 홍원 군주 홍루가 흑수환염[黑獣丸染] 으로 아래 효과 얻음 - 스킬로 파열 위력 또는 횟수 부여 시, 침잠 1 부여 (턴당 3회) 대기 해제 또는 복귀로 등장한 턴에 발각[發角] 3 얻음"}],
   "돈키호테|검지 대행자 - 개화 E.G.O::대행": [{name:"역시 마법의 삐삐님은 본인이 원하는 걸 알아주시는 군!",sin:"색욕",count:"1",effect:"자신의 지령의 가호 1당 지령 표식 스킬 피해량 +2% (최대 16%) - 지령의 가호 가 9면, 대신 기본 스킬 피해량 +20% 지령 대상 이 있는 대상에게 기본 스킬 적중 시, 정신력 3 회복 (스킬당 1회, 턴당 2회) - 해금 단계만큼 정신력 추가 회복"},{name:"단말기로 전해진 지령",sin:null,count:null,effect:"턴 시작 시 - 자신의 지령의 가호 수치에 따라 지령[단말기] Ⅰ / 지령[단말기] Ⅱ / 지령[단말기] Ⅲ / 지령[단말기] Ⅳ 얻음 - 무작위 적에게 지령 대상 부여 (집중 전투면, 부위에 부여) - 조작 슬롯의 자신의 기본 공격 스킬에 지령 표식 부여 (슬롯당 1개, 최대 2개 부여) · 해금 - II 이상이면, 스킬 3에 우선 부여 - 흐트러짐, 행동 불가, 패닉, E.G.O 침식 상태면, 위의 모든 효과와 지령 수행 여부가 적용되지 않음 턴 시작 시 해금 - Ⅲ 이면, 신(心) - 대행 얻음"},{name:"지령의 뜻",sin:null,count:null,effect:"이번 턴에 지령 을 수행했으면, 턴 종료 시 정신력 4 회복, 지령의 가호 1 얻음 (턴당 1회) - 지령 수행 시 메인 타겟에게 지령 대상 이 있으면, 대신 정신력 8 회복, 지령의 가호 3 얻음 이번 턴에 지령 을 수행하지 못했으면, 턴 종료 시 카르마 5 얻음 - 해금 - Ⅲ 이면, 카르마 를 얻지 않음 - 전투 시작 시 지령 수행을 시도했으나, 전투 중 대상을 타겟할 수 없게 되었으면, 카르마 를 얻지 않음"},{name:"해금 / 개화 E.G.O::대행",sin:null,count:null,effect:"턴 시작 시 지령의 가호 가 3/6/9이면, 해금 - I / 해금 - II / 해금 - Ⅲ 얻음 해금 - I 을 얻으면, 정신력을 15 소모하여 개화 E.G.O::대행 상태가 됨 - 정신력 소모 전 정신력이 25까지 증가하고 (증가한 정신력/5)만큼 카르마 얻음 (소수점 올림) - 이후 턴 시작 시 해금 이 있고, 정신력이 25 이상이면, 정신력을 15 소모하여 해당 상태가 됨 개화 E.G.O::대행 상태가 될 때, - 해당 턴의 흐트러짐 해제 (해제할 수 없는 흐트러짐이면 해당 상태가 될 수 없음) - 해당 상태일 때, 당연한 믿음 얻음 턴 시작 시 정신력이 0 이하면, 해당 상태 해제"}],
+  "돈키호테|오트쿠튀르::르누아르 브랜드 매니저": [{name:"말레우스 프로미시오니스",sin:null,count:null,effect:"스테이지 첫 등장 시 자신의 보존 횟수 10 증가하고, 자신을 제외한 르누아르 소속 아군 인격의 충전 횟수 2 증가 스킬 효과로 약속된 못 부여 시 자신의 보존 횟수가 - 12 이상이면, 약속된 못 부여량 +1, 자신의 보존 횟수 4 소모 - 12 미만이면, 자신의 보존 횟수 2 소모 - 부족하면, 대신 약속된 못을 부여하지 않음 - 이 효과로 인해서 약속된 못을 부여하는 스킬이 충전 횟수를 소모하는 스킬로 취급됨 전투 중 누적으로 자신의 보존 횟수를 10 소모할 때마다 보존 위력 1 얻음"},{name:"보존의 사명",sin:null,count:null,effect:"스테이지 첫 등장 시 검은 신의 가호 25 얻음 자신의 보존 횟수를 소모하거나 최대치를 초과하여 얻으면, (해당 수치 x 5)만큼 검은 신의 가호 얻음 (턴당 최대 30) 보호막이 있는 아군 인격이 피격 시 자신이 검은 신의 가호 2 얻음 (턴당 최대 10) - 해당 아군 인격이 충전 인격이면, 대신 검은 신의 가호 5 얻음"},{name:"신의 뜻과 가치가 우리와 함께하리…",sin:null,count:null,effect:"자신을 제외한 르누아르 소속 아군 인격이 적에게 공격 시작 전, 자신이 '심판!'으로 메인 타겟을 우선으로 일방 공격함 (턴당 1회) 기본 스킬의 마지막 코인 시작 시 (자신의 보존 위력 + 대상의 약속된 못/2)만큼 해당 코인의 최종 위력이 증가함 (최대 5) 자신에게 보존 신역이 있으면, 기본 스킬 1/2/3의 합 위력 +1/+2/+3 약속된 못이 있는 대상에게 진동 폭발 발생 시 자신과 자신을 제외한 충전 횟수가 가장 적은 아군 충전 인격 1명의 충전 횟수 2 증가 (턴당 2회)"},{name:"검은 언약",sin:null,count:null,conditions:[{sin:"오만",count:"1"},{sin:"질투",count:"1"},{sin:"나태",count:"1"}],effect:"전투 종료 시 자신에게 보존 신역이 있으면, 다음 턴에 신속 2 얻음 자신의 기본 공격 스킬로 메인 타겟에게 가하는 피해량 +(자신의 보존 위력 x 6)% (최대 30%)"}],
   "료슈|LCB 수감자": [{name:"무차별적 예술",sin:"탐식",count:"3",effect:"자신이 받는 피해량 +25%. 가하는 피해량 +25%"}],
   "료슈|남부 세븐 협회 6과": [{name:"반.갈",sin:"탐식",count:"5",effect:"이번 턴 참격 피해량 +10%"}],
   "료슈|LCCB 대리": [{name:"담.탐",sin:"탐식",count:"2",effect:"- 상시 적용: 탄환 7개 보유 - 턴 종료 시 자신에게 호흡 이 7 이상 있으면, 정신력 8 회복 - 회복 전 정신력이 최대인 경우, 다음 턴에 호흡 1을 얻음"}],
@@ -2877,6 +2896,7 @@ const IDENTITY_SPECIAL_SKILLS = {
   "돈키호테|라만차랜드 실장": [{name:"아류 산초 경혈 6식 - 채찍",sin:"나태",power:"4",coin:"+3",coinCount:1,coinEffects:{2:"파괴 불가 코인 [적중시] 출혈 2 부여",3:"파괴 불가 코인 [적중시] 출혈 2 부여 [적중시] 대상의 출혈 을 1회 발동시킴. 대상의 출혈 횟수 1 감소"},refNote:"패시브 참조",attachTo:"skill1",tier:1},{name:"아류 산초 경혈 8식 - 갈라지도록",sin:"분노",power:"4",coin:"+3",coinCount:2,coinEffects:{1:"[적중시] 출혈 2 부여",2:"[적중시] 출혈 2 부여",3:"파괴 불가 코인 대상의 출혈 당 피해량 +2.5% (최대 25%) 공용 누적 소모 혈찬 100 당 피해량 +15% (최대 75%)"},refNote:"패시브 참조",attachTo:"skill2",tier:2},{name:"산초류 경혈 오의 - 라 샹그레",sin:"색욕",power:"5",coin:"+5",coinCount:0,coinEffects:{1:"파괴 불가 코인",2:"파괴 불가 코인",3:"파괴 불가 코인",4:"파괴 불가 코인 [적중시] 출혈 8 부여, 출혈 횟수 4 증가 [공격 종료시] 대상이 사망했으면. 모든 적에게 출혈 5 부여, 출혈 횟수 1 증가"},refNote:"패시브 참조",attachTo:"skill3",tier:3},{name:"아류 산초 경혈 15식 - 피날레 준비",sin:"색욕",power:"6",coin:"+5",coinCount:1,coinEffects:{2:"파괴 불가 코인 [적중시] 출혈 횟수 3 증가"},refNote:"패시브 참조",attachTo:"defense",tier:1}],
   "돈키호테|로보토미 E.G.O::사랑과 증오의 이름으로": [{name:"악당은... 어디있어....?",sin:"분노",power:"12",coin:"-4",coinCount:2,coinEffects:{2:"[적중시] 자신의 사랑/증오 횟수 3 증가 [적중시] 침잠 3 부여"},refNote:"패시브 참조",attachTo:"skill1",tier:1},{name:"내 머릿속에서 나가줘...",sin:"질투",power:"15",coin:"-6",coinCount:2,coinEffects:{1:"[적중시] 자신의 사랑/증오 횟수 3 증가",2:"[적중시] 침잠 2 부여 [적중시] 다음 턴에 메인 타겟에게 악당 표식 부여"},refNote:"패시브 참조",attachTo:"skill2",tier:2},{name:"리버스드 비트 / 리버스드 아르카나 슬레이브",sin:"질투",power:"20",coin:"-6",coinCount:0,coinEffects:{1:"파괴 불가 코인",2:"파괴 불가 코인 [파괴되지 않고 적중시] 침잠 2 부여",3:"파괴 불가 코인 [파괴되지 않고 적중시] 침잠 2 부여"},refNote:"패시브 참조",attachTo:"skill3",tier:3}],
   "돈키호테|검지 대행자 - 개화 E.G.O::대행": [{name:"이 손으로 대신…",sin:"색욕",power:"4",coin:"+4",coinCount:2,coinEffects:{1:"[적중시] 침잠 2 부여",2:"[적중시] 침잠 횟수 1 증가 [크리티컬 적중 시] 자신의 호흡 횟수 1 증가"},refNote:"패시브 참조",attachTo:"skill1",tier:1},{name:"대행: 새기기",sin:"오만",power:"5",coin:"+4",coinCount:3,coinEffects:{1:"[적중시] 침잠 2 부여",2:"[적중시] 침잠 2 부여",3:"[적중시] 자신의 호흡 횟수 1 증가 [크리티컬 적중 시] 침잠 횟수 1 증가"},refNote:"패시브 참조",attachTo:"skill2",tier:2},{name:"대행: 말살",sin:"우울",power:"5",coin:"+3",coinCount:0,coinEffects:{1:"파괴 불가 코인 [적중시] 침잠 1 부여",2:"파괴 불가 코인 [적중시] 침잠 1 부여",3:"파괴 불가 코인 [적중시] 침잠 1 부여",4:"파괴 불가 코인 해금 단계 1당, 이 코인의 위력 +1, 피해량 +40% (각각 최대 3, 최대 120%) [적중시] 침잠 1 부여 [크리티컬 적중 시] 침잠 횟수 2 증가"},refNote:"패시브 참조",attachTo:"skill3",tier:3},{name:"강제 해금",sin:"우울",power:"4",coin:"+3",coinCount:3,coinEffects:{2:"[적중시] 침잠 1 부여",3:"[적중시] 침잠 1 부여"},refNote:"패시브 참조",attachTo:"defense",tier:1}],
+  "돈키호테|오트쿠튀르::르누아르 브랜드 매니저": [{name:"심판!",sin:"오만",power:"6",coin:"+4",coinCount:1,coinEffects:{1:"[합 불가능] 이 스킬은 아래 효과가 적용됨 - 수비 스킬을 발동시키지 않음 - 외부 효과로 재사용할 수 없음 - 이 스킬 종료 시까지 대상의 체력이 1 미만으로 감소하지 않음 [사용시] 대상의 진동 위력과 약속된 못의 합 4당, 최종 위력 +1 (최대 3) [사용시] 자신의 보존 위력이 3 이상이면, 코인 위력 +1, 피해량 +40% [적중시] 약속된 못 1 부여 [적중시] 진동 4 부여"},refNote:"패시브 참조",attachTo:"skill1",tier:1},{name:"거듭 내리쳐, 탄생을 끊으리라!",sin:"나태",power:"6",coin:"+4",coinCount:3,coinEffects:{1:"이 스킬은 수비 스킬 대신 발동해도 공격 스킬로 취급되어, 수비 위력 변경 효과를 받지 않고, 공격 위력 변경 효과가 적용됨 [전투 시작시] 모든 르누아르 소속 아군 인격에게 공격 레벨 증가 2, 방어 레벨 증가 2 부여 (턴당 1회) [사용시] 모든 공격 대상의 진동 위력과 약속된 못의 합 6당, 코인 위력 +1 (최대 2) [사용시] 자신의 보존 위력이 3 이상이면, 코인 위력 +1 [사용시] 이 스킬 공격 가중치보다 낮은 공격 대상 1당, 피해량 +50% (집중 전투인 경우, 부위로 판정) [공격 시작 전] 최대 공명 수 1당, 마지막 코인의 최종 위력 +2 (최대 8) [공격 종료시] 검은 신의 가호 전부 소모 [적중시] 약속된 못 1 부여 [적중시] 진동 2 부여",2:"[적중시] 약속된 못 1 부여 [적중시] 진동 2 부여",3:"[적중시] 진동 횟수 3 증가 [적중시] 자신의 보존 횟수 4 증가 (코인당 1회) [적중시] 진동 - 보존으로 진폭 변환 [적중시] 진동 폭발. 대상의 진동 횟수 1 감소 [적중시] 대상별로 약속된 못 수치에 따라 아래 효과 적용 - 약속된 못이 3 이상이면, 진동 폭발. 대상의 진동 횟수 1 감소 - 이 코인의 최종 피해량의 (약속된 못 x 3)%만큼 나태 피해 (최대 90%) - 대상의 약속된 못 전부 소모"},refNote:"수비 스킬 참조",attachTo:"defense",tier:3}],
   "료슈|로보토미 E.G.O::적안 · 참회": [{name:"진심 대가리 터트리기",sin:"색욕",power:"5",coin:"+4",coinCount:3,coinEffects:{1:"[적중시] (소모한 적안 - 15)만큼 출혈 부여 (최대 5)",3:"소모한 적안 , 참회 당 피해량 +4% (최대 160%) [적중시] 자신과 현재 체력 비율이 가장 낮은 아군 1명이 각 대상의 최대 체력의 (소모한 참회 )%만큼 체력 회복 - 최대 공명수 2 당 회복 대상 수 +1 (최대 2명 증가) [적중시] 자신과 현재 정신력이 가장 낮은 아군 1명을 (소모한 참회 - 5)만큼 정신력 회복 - 최대 공명수 2 당 회복 대상 수 +1 (최대 2명 증가) [적중시] 다음 턴에 속박 3, 공격 위력 감소 2 부여 (턴 당 1회)"},refNote:"스킬 3 참조",attachTo:"skill3",tier:3}],
   "료슈|N사 E.G.O::경멸, 경외": [{name:"경멸 밑으로 쏟아지는 경외의 시선",sin:"색욕",power:"14",coin:"+14",coinCount:0,coinEffects:{1:"파괴 불가 코인 대상에게 경멸 이 있으면, 피해량 +235% [적중시] 진동 4 부여, 진동 횟수 2 증가 [적중시] 출혈 4 부여, 출혈 횟수 2 증가 [파괴되지 않고 적중시] 진동 - 과다출혈 로 진폭 변환 [적중시] 진동 폭발 . 대상의 진동 횟수 1 감소"},refNote:"스킬 3 참조",attachTo:"skill3",tier:3},{name:"쏘아내겠소 / 언제든지",sin:"오만",power:"4",coin:"+7",coinCount:0,coinEffects:{1:"파괴 불가 코인 이 코인에는 메인 타겟만 피해를 입음",2:"파괴 불가 코인 이 코인에는 서브 타겟만 피해를 입음 - 첫 번째 코인 피해가 크리티컬이 아니고, N사 E.G.O::경멸, 경외 료슈가 생존했다면, 서브 타겟 중 무작위 1명이 피해를 입음 자신의 찢어진 추억 당 피해량 +40% (최대 280%) - 호흡 위력당, 크리티컬 피해량 +5% (최대 50%) - 자신의 찢어진 추억당 , 크리티컬 피해량 +10% (최대 70%) - 메인 타겟의 잃은 체력 비율만큼 피해량 증가 (최대 100%) [적중시] 출혈 5 부여, 출혈 횟수 2 증가"},refNote:"패시브 참조",attachTo:"skill3",tier:3}],
   "료슈|로보토미 E.G.O::잔향 · 외로움": [{name:"멈추지 않는 이야기",sin:"나태",power:"9",coin:"+1",coinCount:3,coinEffects:{1:"[적중시] 침잠 횟수 1 증가 [적중시] 다음 턴에 고독 2 부여",2:"[적중시] 진동 2 부여 [적중시] 다음 턴에 고독 2 부여",3:"[적중시] 진동 2 부여 [적중시] 다음 턴에 고독 2 부여"},refNote:"패시브 참조",attachTo:"skill1",tier:1},{name:"황홀한 종말",sin:"우울",power:"12",coin:"+7",coinCount:1,coinEffects:{},refNote:"패시브 참조",attachTo:"skill3",tier:3}],
@@ -2933,6 +2953,7 @@ const EGO_DATA = {
   "command-meltdown-faust": {sinner:"파우스트", title:"명령 : 용해 파우스트", grade:"HE", sin:"탐식", season:null},
   "ardor-blossom-star-faust": {sinner:"파우스트", title:"홍염살 파우스트", grade:"HE", sin:"분노", season:7},
   "everlasting-faust": {sinner:"파우스트", title:"영속 파우스트", grade:"WAW", sin:"나태", season:4},
+  "le-trou-faust": {sinner:"파우스트",title:"구멍 파우스트",grade:"WAW",sin:"오만",season:8},
   "la-sangre-de-sancho-don-quixote": {sinner:"돈키호테", title:"라 샹그레 데 산쵸 돈키호테", grade:"ZAYIN", sin:"색욕", season:null},
   "ill-go-fer-scissors-how-bout-you-don-quixote": {sinner:"돈키호테", title:"난 가위를 낼게, 너는? 돈키호테", grade:"ZAYIN", sin:"질투", season:7},
   "lifetime-stew-don-quixote": {sinner:"돈키호테", title:"평생 스튜 돈키호테", grade:"TETH", sin:"색욕", season:1},
@@ -3067,6 +3088,7 @@ const EGO_SKILL_DETAIL = {
   "command-meltdown-faust": {awakening:{name:"명령 : 용해",sin:"탐식",power:"17",coin:"+13",weight:"3",coinEffects:{1:"[적중시] 파열 3 부여 [적중시] 화상 3 부여"}},corrosion:{name:"명령 : 용해",sin:"탐식",power:"3",coin:"+4",weight:"3",coinEffects:{1:"[적중시] 파열 1 부여",2:"[적중시] 파열 1 부여",3:"파괴 불가 코인 [적중시] 파열 횟수 2 증가",4:"파괴 불가 코인 [코인 시작 시] 이 스킬로 흐트러지거나 사망한 대상이 없으면, 피해량 +30% [적중시] 화상 3 부여"}}},
   "ardor-blossom-star-faust": {awakening:{name:"홍염살",sin:"분노",power:"10",coin:"+5",weight:"3",coinEffects:{1:"[적중시] 화상 1 부여 [적중시] (분노 공명 수 / 2)만큼 화상 부여 (최대 3, 소수점 버림)",2:"[적중시] (분노 공명 수 / 3)만큼 화상 횟수 증가 (최대 2, 소수점 버림) [이 코인 공격 종료시] 자신의 화상 이 15 이상이면, 모든 공격 대상에게 잔불 1 부여 (턴당 1회, 집중 전투인 경우 부위로 취급)"}},corrosion:{name:"홍염살",sin:"분노",power:"17",coin:"-3",weight:"5",coinEffects:{1:"[적중시] 화상 횟수 1 증가 [적중시] (분노 공명 수 / 3)만큼 화상 횟수 증가 (최대 2, 소수점 버림)",2:"[적중시] 화상 2 부여 [적중시] (분노 공명 수 / 2)만큼 화상 부여 (최대 3, 소수점 버림)",3:"[이 코인 공격 종료시] 잔불 6을 무작위로 공격 대상에게 나누어 부여 (턴당 1회, 최댓값인 대상 제외, 집중 전투인 경우 부위로 취급)"}}},
   "everlasting-faust": {awakening:{name:"영속",sin:"나태",power:"4",coin:"+5",weight:"1",coinEffects:{1:"[적중시] 진동 10, 진동 횟수 10 부여 [적중시] 진동 - 영속 으로 진폭 얽힘 [적중시] 진동 폭발 . 대상의 진동 횟수 1 감소",2:"[적중시] 진동 폭발 . 대상의 진동 횟수 1 감소",3:"[적중시] 진동 폭발 . 대상의 진동 횟수 1 감소",4:"[적중시] 진동 폭발 . 대상의 진동 횟수 1 감소 [적중시] 다음 턴에 대상의 속도 최댓값 절반으로 감소"}},corrosion:{name:"영속",sin:"나태",power:"36",coin:"-12",weight:"3",coinEffects:{1:"[적중시] 진동 5, 진동 횟수 5 부여 [적중시] 진동 - 영속 으로 진폭 얽힘 [적중시] 진동 폭발 . 대상의 진동 횟수 1 감소 [적중시] 진동 폭발 . 대상의 진동 횟수 1 감소 [적중시] 진동 폭발 . 대상의 진동 횟수 1 감소 [적중시] 다음 턴에 대상의 속도 최댓값 절반으로 감소"}}},
+  "le-trou-faust": {awakening:{name:"구멍(le trou)",sin:"오만",power:"6",coin:"+5",weight:"1",coinEffects:{1:"[합 불가능] 전투에서 처음 사용 시 정신력 소모량이 5 감소하고, 필요한 E.G.O 자원이 우울 2, 오만 2, 질투 2 감소 잿빛 탄환이 1 이상이면, '부셰'로 발동됨 이 스킬은 적에게 적중하지 않고, 수비 스킬을 발동시키지 않으며, 외부 효과로 재사용이 불가능함 [공격 종료시] 잿빛 탄환 5 얻음 [공격 종료시] 호흡 위력 5 얻음 [공격 종료시] 호흡 횟수 3 얻음 [공격 종료시] 충전 횟수 5 얻음 [공격 종료시] 검은 날개 4 얻음"},alt:{name:"부셰(boucher un trou)",sin:"오만",power:"5",coin:"+2",weight:"7",coinEffects:{1:"이 스킬은 외부 효과로 재사용이 불가능함 이 스킬 공격 가중치보다 낮은 공격 대상 1당 피해량 +10% (집중 전투인 경우, 부위로 판정) 자신의 (호흡 위력 + 충전 횟수) 4당 합 위력 +1 (최대 10) 자신의 잿빛 탄환 1당 합 위력 +2 [공격 시작 전] 공격 대상이 1명이면, 피해량 +100% (집중 전투인 경우, 본체로 판정) [공격 시작 전] 잿빛 탄환을 전부 소모하고 아래 효과 적용 - 소모값 1당 호흡 위력 2, 호흡 횟수 1, 충전 횟수 2 얻음 - 소모값 1당 피해량 +8% [공격 종료시] 아군 2+(최대 공명 수)명에게 호흡 위력 5, 호흡 횟수 2 부여 (최대 7명) 이 스킬에서 잿빛 탄환을 5 소모했으면, 정신력 5 회복 [공격 종료시] 잿빛 탄환 1 얻음 파괴 불가 코인 (소모한 잿빛 탄환 - 1)만큼 이 코인 재사용 (최대 4회) [적중시] 침잠 1 부여"}}},corrosion:{name:"구멍",sin:"오만",power:"16",coin:"-3",weight:"7",coinEffects:{1:"[피아식별불가] 무작위 대상 공격 자신의 (호흡 위력 + 충전 횟수) 4당 합 위력 +1 (최대 10) [공격 시작 전] 자신의 호흡 횟수 3, 충전 횟수 5 증가 [공격 시작 전] 자신의 10을 초과하는 충전 횟수를 최대 15까지 소모하여 피해량 +(소모값 × 5)% [공격 시작 전] 자신의 잿빛 탄환이 최대치면, 전부 소모하여 다음 턴에 모든 아군에게 아래 효과 적용 - 공격 레벨 증가 1 부여 - 피해량 증가 1 부여 (턴당 1회) - 크리티컬 피해량 증가 1 부여 (턴당 1회) [공격 시작 전] 파괴된 코인 수당 기본 위력 -3 (최대 -9) [공격 종료시] 잿빛 탄환 1, 검은 날개 2 얻음 [공격 종료시] 무작위 아군 2+(최대 공명 수)명에게 호흡 위력 5, 호흡 횟수 2, 검은 날개 2 부여 (최대 7명) 파괴 불가 코인 [적중시] 침잠 횟수 2 증가",2:"파괴 불가 코인 [적중시] 침잠 2 부여",3:"파괴 불가 코인"}}},
   "la-sangre-de-sancho-don-quixote": {awakening:{name:"라 샹그레 데 산쵸",sin:"색욕",power:"12",coin:"+14",weight:"1",coinEffects:{1:"[적중시] 출혈 8 부여 [적중시] 피해량의 50%만큼 체력 회복"}},corrosion:null},
   "ill-go-fer-scissors-how-bout-you-don-quixote": {awakening:{name:"난 가위를 낼게, 너는?",sin:"질투",power:"12",coin:"+12",weight:"3",coinEffects:{1:"파괴 불가 코인 [합 승리 후 적중시] 다음 턴에 위력 감소 1 부여 (대상 별 턴당 1회) [적중시] 출혈 4 부여"}},corrosion:{name:"난 가위를 낼게, 너는?",sin:"질투",power:"4",coin:"+4",weight:"3",coinEffects:{1:"파괴 불가 코인",2:"파괴 불가 코인",3:"파괴 불가 코인 [적중시] 다음 턴에 위력 감소 1 부여 (대상 별 턴당 1회) [적중시] 출혈 6 부여"}}},
   "lifetime-stew-don-quixote": {awakening:{name:"평생 스튜",sin:"색욕",power:"21",coin:"+4",weight:"3",coinEffects:{1:"[적중시] 화상 횟수 3 증가 [적중시] 출혈 횟수 3 증가"}},corrosion:{name:"평생 스튜",sin:"색욕",power:"22",coin:"+5",weight:"3",coinEffects:{1:"파괴 불가 코인 [적중시] 화상 횟수 4 증가 [적중시] 출혈 횟수 4 증가"}}},
@@ -3184,6 +3206,7 @@ const EGO_PASSIVE_DETAIL = {
   "command-meltdown-faust": {name:"의사",effect:"턴 시작 시, 자신과 현재 체력 비율이 가장 낮은 아군의 체력을 자신의 최대 체력의 ( 경화막 수치)%만큼 회복 - 자신의 체력이 최대일 경우, 대신 현재 체력 비율이 가장 낮은 다른 아군 2명의 체력 회복 - 회복받는 대상의 체력이 25% 이하거나 흐트러짐 상태면, 이 효과로 회복되는 수치가 1.5배로 증가 턴 종료 시 이번 전투에서 파우스트가 가장 마지막에 사용한 E.G.O 스킬이 명령 : 용해일 경우 경화막 효과의 턴 종료 시 감소량이 1로 변경 - 이 효과는 E.G.O 스킬을 사용한 턴부터 즉시 적용",atkLevel:"62(+2) / 64(+4)",sp:null},
   "ardor-blossom-star-faust": {name:"꺼지지 않은 불씨",effect:"이 효과는 E.G.O 스킬 종료 후 즉시 적용 자신의 화상 10당 적에게 기본 공격 스킬 효과, 코인 효과로 부여하는 화상 위력 +1 (최대 2, 특수 화상 제외) 홍염살 최대 감응 【열화침식】 스킬을 사용했으면, 해당 공격 종료시 사망하지 않고 최대 체력의 40%만큼 회복하고 다음 턴에 타격 피해량 증가 2, 분노 피해량 증가 1 얻음 (전투당 1회 발동)",atkLevel:"62(+2) / 63(+3)",sp:null},
   "everlasting-faust": {name:"달리는 시간",effect:"자신이 적에게 스킬을 사용하여 진동 폭발 부여 시, 신속 1 얻음 (턴 당 최대 4회. E.G.O 스킬 포함)",atkLevel:"60(0)",sp:null},
+  "le-trou-faust": {name:"르 트루 드 비당주(le trou de vidange)",effect:"자신의 잿빛 탄환이 5면, '구멍' E.G.O 스킬(각성, 침식) 사용 시 E.G.O 자원을 소모하지 않음 턴 시작 시 잿빛 탄환 1, 검은 날개 1 얻음 아군이 적 처치 시, 해당 캐릭터의 정신력 5 회복하고 다음 턴에 공격 위력 증가 1 부여 (턴당 1회) 충전 횟수 최대치 +5 자신의 충전 횟수를 초과하여 충전 횟수를 얻으면, 초과값만큼 호흡 위력 또는 횟수를 무작위로 얻음 (턴당 최대 6 전환 가능)",atkLevel:"65(0) / 68(+3)",sp:"끈 35개 필요"},
   "la-sangre-de-sancho-don-quixote": {name:"과도한 열정",effect:"출혈 이 있는 적 공격 시 체력 3 회복",atkLevel:"62(+2)",sp:null},
   "ill-go-fer-scissors-how-bout-you-don-quixote": {name:"이번엔 그대가 바늘을 삼킬 차례라네..!",effect:"질투 속성인 스킬의 피해량 +10% - 질투 공명 수 1당, 추가로 해당 스킬의 피해량 +1% (최대 7%) 턴 시작 시 (이번 전투 동안 누적된 자신의 체력 피해(보호막 피해 포함) / 20)만큼 공격 레벨 증가 얻음 (최대 3) 전투 시작 시 질투 완전 공명을 했으면, 모든 적에게 바늘 1 부여 (집중 전투일 경우, 부위로 판정)",atkLevel:"62(+2) / 63(+3)",sp:null},
   "lifetime-stew-don-quixote": {name:"폭식의 도가니",effect:"턴 시작 시 색욕이 아닌 무작위 속성의 E.G.O 자원 1개를 색욕 E.G.O 자원 1개로 변경 - 색욕 E.G.O 자원이 20개 이상이면 해당 효과가 발동하지 않고, 대신 색욕 위력 증가 1 얻음 색욕 속성 기본 스킬 공격 시작 전 보유한 색욕 E.G.O 자원 1개당 피해량 +1% (최대 10%)",atkLevel:"63(+3)",sp:null},
@@ -3302,6 +3325,7 @@ const EGO_COST_DETAIL = {
   "command-meltdown-faust": [{sin:"나태",count:1},{sin:"탐식",count:5},{sin:"오만",count:2}],
   "ardor-blossom-star-faust": [{sin:"분노",count:3},{sin:"나태",count:2},{sin:"오만",count:2}],
   "everlasting-faust": [{sin:"색욕",count:2},{sin:"나태",count:4},{sin:"우울",count:2},{sin:"오만",count:3}],
+  "le-trou-faust": [{sin:"우울",count:2},{sin:"오만",count:4},{sin:"질투",count:2}],
   "la-sangre-de-sancho-don-quixote": [{sin:"색욕",count:2},{sin:"오만",count:2}],
   "ill-go-fer-scissors-how-bout-you-don-quixote": [{sin:"질투",count:5}],
   "lifetime-stew-don-quixote": [{sin:"색욕",count:5}],
@@ -6230,7 +6254,10 @@ function dealcalcBuildSkillOptions(sinner, identity, tier = 4){
         id: `${slot}|special${si}`, slotKey: slot, tag: `${label} 강화`, kind: "special", name: s.name,
         ...v, sin: v.sin || s.sin,
         coinEffects: s.coinEffects || null, refNote: s.refNote,
-        dealsDamage: slot === "defense" ? (sp && sp.d ? sp.d === "COUNTER" : defenseDealsDamage) : true,
+        // 이 동기화 단계에 존재하는 스킬인지: 게임 데이터에 해당 단계 수치가 있으면 사용 가능, 없으면 기존 규칙(3단계부터)
+        avail: sp ? !!(sp.t[tier - 1] && sp.t[tier - 1].p != null) : tier >= 3,
+        // 수비 칸에 붙는 강화 스킬 중 게임상 유형이 ATTACK인 것(예: 수비 대신 발동하는 공격 스킬)도 데미지를 준다
+        dealsDamage: slot === "defense" ? (sp && sp.d ? sp.d === "COUNTER" || sp.d === "ATTACK" : defenseDealsDamage) : true,
       });
     });
   });
@@ -6249,8 +6276,9 @@ function dealcalcBuildEgoOptions(sinner){
       const egoName = meta.title.endsWith(` ${sinner}`) ? meta.title.slice(0, -(sinner.length + 1)) : meta.title;
       const ts = (typeof EGO_THREADSPIN !== "undefined") ? EGO_THREADSPIN[slug] : null;
       const level = dealcalcEgoLevel(slug);
-      [["awakening", "각성", "a"], ["corrosion", "침식", "c"]].forEach(([k, lbl, tk]) => {
-        const s = det[k];
+      // 각성 스킬에 조건부 변형 형태(alt, 예: 구멍 → 부셰)가 있으면 별도 선택지로 둔다
+      [["awakening", "각성", "a"], ["alt", "각성 변형", "x"], ["corrosion", "침식", "c"]].forEach(([k, lbl, tk]) => {
+        const s = k === "alt" ? (det.awakening && det.awakening.alt) : det[k];
         if (!s) return;
         // 게임 데이터가 없으면, 효과가 있는 코인만 번호로 기록된 나무위키 데이터에서 가장 큰 코인 번호를 코인 수로 추정
         const keys = s.coinEffects ? Object.keys(s.coinEffects).map(Number).filter(n => n > 0) : [];
@@ -6260,9 +6288,11 @@ function dealcalcBuildEgoOptions(sinner){
         });
         out.push({
           id: `ego|${slug}|${k}`, slotKey: "ego", tag: `E.G.O ${lbl} · ${meta.grade}`, kind: "ego", egoSlug: slug,
-          name: k === "corrosion" ? `${egoName} (침식)` : egoName,
+          name: k === "corrosion" ? `${egoName} (침식)` : k === "alt" ? s.name : egoName,
           ...v, sin: v.sin || s.sin,
-          coinEffects: s.coinEffects || null, dealsDamage: true,
+          coinEffects: s.coinEffects || null,
+          // "이 스킬은 적에게 적중하지 않고…" 같은 비공격 형태(변형 전 각성)는 데미지 없음
+          dealsDamage: !Object.values(s.coinEffects || {}).some(x => /적에게 적중하지 않/.test(x)),
         });
       });
     });
@@ -6320,11 +6350,11 @@ function dealcalcResonance(){
   return out;
 }
 function dealcalcResonanceOn(){ return document.getElementById("dcResonance").checked; }
-// 3스킬·강화(EGO 부식) 스킬은 동기화 3단계부터 해금 — 인격 스킬 수치 자체는 현재 4단계 데이터 기준.
+// 3스킬은 동기화 3단계부터 해금. 강화/특수 스킬은 게임 데이터에 그 단계 수치가 있는지로 판단한다.
 function dealcalcSlotOptions(sinner, identity){
   const tier = dealcalcSettings(sinner).sync;
   const base = dealcalcBuildSkillOptions(sinner, identity, tier);
-  const gated = tier >= 3 ? base : base.filter(o => o.slotKey !== "skill3" && o.kind !== "special");
+  const gated = base.filter(o => (tier >= 3 || o.slotKey !== "skill3") && (o.kind !== "special" || o.avail));
   return gated.concat(dealcalcBuildEgoOptions(sinner));
 }
 function dealcalcMember(sinner){ return dealcalcState.party[sinner] || null; }
@@ -6634,10 +6664,11 @@ function dealcalcRenderSkillBar(){
     const hasCor = opts.some(o => o.egoSlug === slug && o.id.endsWith("|corrosion"));
     const cur = editingSlot && editingSlot.ego && editingSlot.ego.startsWith(`ego|${slug}|`) ? editingSlot.ego : null;
     const isCor = cur && cur.endsWith("|corrosion");
+    const isAlt = cur && cur.endsWith("|alt");
     const title = egoBlocked ? "한 턴에 한 수감자는 E.G.O를 한 번만 사용할 수 있습니다"
       : (cur ? "다시 누르면 E.G.O 사용 취소" : "누르면 각성으로 사용") + (hasCor ? " · 길게 누르면 침식" : "");
     return `<button type="button" class="dealcalc-skill-slot is-ego${cur ? " is-current" : ""}${isCor ? " is-corrosion" : ""}" data-ego-slug="${escapeHTML(slug)}" data-has-cor="${hasCor ? 1 : 0}"${egoBlocked && !cur ? " disabled" : ""} title="${escapeHTML(title)}">
-      <span class="dealcalc-skill-slot-tag">E.G.O · ${escapeHTML(EGO_DATA[slug].grade)}${isCor ? " · 침식" : ""}</span>
+      <span class="dealcalc-skill-slot-tag">E.G.O · ${escapeHTML(EGO_DATA[slug].grade)}${isCor ? " · 침식" : isAlt ? " · 변형" : ""}</span>
       <span class="dealcalc-skill-slot-name">${escapeHTML(aw ? aw.name : slug)}</span>
     </button>`;
   }).join("");
@@ -6673,6 +6704,12 @@ function dealcalcRenderSkillDetail(){
   rows.push(`<div class="dealcalc-note">분석 중: ${escapeHTML(dealcalcSlotLabel(ref.slot.uid))} · ${escapeHTML(ref.member.identity)} (Lv.${dealcalcSettings(ref.sinner).level} · 동기화 ${dealcalcSettings(ref.sinner).sync})</div>`);
   if (ref.slot.ego){
     const baseOpt = dealcalcSlotOptions(ref.sinner, ref.member.identity).find(x => x.id === ref.slot.base);
+    const egoDet = EGO_SKILL_DETAIL[o.egoSlug];
+    if (egoDet && egoDet.awakening && egoDet.awakening.alt){
+      const forms = [["awakening", `각성: ${egoDet.awakening.name}`], ["alt", `변형: ${egoDet.awakening.alt.name}`]];
+      if (egoDet.corrosion) forms.push(["corrosion", `침식: ${egoDet.corrosion.name}`]);
+      rows.push(`<div class="dealcalc-ego-cancel-row">${forms.map(([f, lbl]) => `<button type="button" class="dealcalc-add-btn${ref.slot.ego.endsWith("|" + f) ? " is-current" : ""}" data-ego-form="${f}">${escapeHTML(lbl)}</button>`).join("")}</div>`);
+    }
     rows.push(`<div class="dealcalc-ego-cancel-row"><button type="button" class="dealcalc-add-btn" id="dcEgoCancel">E.G.O 사용 취소</button><span class="dealcalc-note">원래 스킬: ${escapeHTML(baseOpt ? baseOpt.name : "없음")}${EGO_SKILL_DETAIL[o.egoSlug] && EGO_SKILL_DETAIL[o.egoSlug].corrosion ? " · 슬롯이나 E.G.O 버튼을 길게 누르면 각성/침식 전환" : ""}</span></div>`);
   }
   rows.push(`<div class="dealcalc-skill-detail-head">${sinIcon ? `<img src="${sinIcon}" width="16" height="16" alt="">` : ""}${escapeHTML(o.name)}${o.refNote ? ` <span class="dealcalc-note">(${escapeHTML(o.refNote)})</span>` : ""}</div>`);
@@ -6701,6 +6738,10 @@ function dealcalcRenderSkillDetail(){
     ref.slot.ego = null;
     dealcalcRefreshAll();
   });
+  box.querySelectorAll("[data-ego-form]").forEach(btn => btn.addEventListener("click", () => {
+    ref.slot.ego = `ego|${o.egoSlug}|${btn.dataset.egoForm}`;
+    dealcalcRefreshAll();
+  }));
   const egoSel = box.querySelector("#dcEgoLevel");
   if (egoSel) egoSel.addEventListener("change", () => {
     dealcalcState.egoLevel[o.egoSlug] = Number(egoSel.value);
@@ -7176,8 +7217,10 @@ function renderDealCalcView(){
     result.innerHTML = `<div class="dealcalc-note">먼저 수감자·인격·스킬을 선택하세요.</div>`;
     return;
   }
-  if (o.slotKey === "defense" && !o.dealsDamage && !bug){
-    result.innerHTML = `<div class="dealcalc-note">가드/회피 계열 수비 스킬은 데미지를 입히지 않습니다. (버그판으로 전환하면 강제로 계산할 수 있습니다)</div>`;
+  if (!o.dealsDamage && !bug){
+    result.innerHTML = o.kind === "ego"
+      ? `<div class="dealcalc-note">이 E.G.O 형태는 적에게 적중하지 않아 데미지가 없습니다. 위 스킬 상세에서 변형 형태를 고르세요. (버그판으로 전환하면 강제로 계산할 수 있습니다)</div>`
+      : `<div class="dealcalc-note">가드/회피 계열 수비 스킬은 데미지를 입히지 않습니다. (버그판으로 전환하면 강제로 계산할 수 있습니다)</div>`;
     return;
   }
   const sin = o.sin;
