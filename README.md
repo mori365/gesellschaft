@@ -2,7 +2,7 @@
 
 림버스 컴퍼니 덱 빌더, 인격·E.G.O·기프트·적 정보 검색, 딜 계산기를 한곳에 모은 비공식 팬 도구입니다.
 
-사이트: https://mori3653.github.io/gesellschaft/
+사이트: https://mori365.github.io/gesellschaft/
 
 ## 메뉴
 
