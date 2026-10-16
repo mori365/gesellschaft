@@ -45,12 +45,49 @@ def sync(remote_dir, local_dir, name_filter=None):
         changed.append(f'{status}\t{os.path.relpath(dst, paths.GAMEDATA)}')
     return changed
 
+def sync_via_git(want_loc):
+    """api.github.com·raw.githubusercontent.com이 막힌 환경(예: 클라우드 루틴)용: git 얕은 복제(sparse)로 받아 복사한다."""
+    import shutil, subprocess
+    clone = os.path.join(paths.WORK, 'openlethe')
+    if os.path.isdir(os.path.join(clone, '.git')):
+        subprocess.run(['git', '-C', clone, '-c', 'core.autocrlf=false', 'pull', '-q', '--depth', '1'], check=True)
+    else:
+        shutil.rmtree(clone, ignore_errors=True)
+        # core.autocrlf=false: Windows에서도 원본 바이트 그대로 받아야 API로 받은 파일과 비교가 맞음
+        subprocess.run(['git', '-c', 'core.autocrlf=false', 'clone', '-q', '--depth', '1', '--filter=blob:none', '--sparse',
+                        f'https://github.com/{REPO}', clone], check=True)
+    subprocess.run(['git', '-C', clone, 'config', 'core.autocrlf', 'false'], check=True)
+    subprocess.run(['git', '-C', clone, 'sparse-checkout', 'set'] + [f'{STATIC}/{d}' for d in DIRS] + ([LOC] if want_loc else []), check=True)
+    changed = []
+    pairs = [(f'{STATIC}/{d}', os.path.join(paths.GAMEDATA, d), None) for d in DIRS]
+    if want_loc:
+        pairs.append((LOC, os.path.join(paths.GAMEDATA, 'loc'), lambda n: n.startswith(LOC_PREFIXES)))
+    for remote_dir, local_dir, name_filter in pairs:
+        os.makedirs(local_dir, exist_ok=True)
+        src_dir = os.path.join(clone, *remote_dir.split('/'))
+        for name in sorted(os.listdir(src_dir)):
+            if name_filter and not name_filter(name):
+                continue
+            data = open(os.path.join(src_dir, name), 'rb').read()
+            dst = os.path.join(local_dir, name)
+            if os.path.exists(dst) and open(dst, 'rb').read() == data:
+                continue
+            status = 'changed' if os.path.exists(dst) else 'new'
+            open(dst, 'wb').write(data)
+            changed.append(f'{status}\t{os.path.relpath(dst, paths.GAMEDATA)}')
+    return changed
+
 def main():
     out = []
-    for d in DIRS:
-        out += sync(f'{STATIC}/{d}', os.path.join(paths.GAMEDATA, d))
-    if '--loc' in sys.argv:
-        out += sync(LOC, os.path.join(paths.GAMEDATA, 'loc'), lambda n: n.startswith(LOC_PREFIXES))
+    want_loc = '--loc' in sys.argv
+    try:
+        for d in DIRS:
+            out += sync(f'{STATIC}/{d}', os.path.join(paths.GAMEDATA, d))
+        if want_loc:
+            out += sync(LOC, os.path.join(paths.GAMEDATA, 'loc'), lambda n: n.startswith(LOC_PREFIXES))
+    except Exception as ex:  # API 접속이 막혔거나 요청 제한
+        print(f'GitHub API로 받기 실패({ex}) → git 복제로 대신 받습니다')
+        out = sync_via_git(want_loc)
     print('\n'.join(out) if out else '변경 없음')
     open(os.path.join(paths.REPORTS, 'fetch_static.txt'), 'w', encoding='utf-8').write('\n'.join(out))
 
