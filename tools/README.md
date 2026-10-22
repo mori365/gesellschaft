@@ -13,7 +13,7 @@
 ```
 python tools/gamedata/fetch_static.py --loc   # 게임 데이터·한국어 이름 받기 (바뀐 파일만)
 python tools/gamedata/check_new.py            # 게임엔 있는데 사이트에 없는 인격·E.G.O
-python tools/gamedata/check_gifts.py          # 사이트에 없는 거울 던전 기프트
+python tools/namu/gift_diff.py --force        # 나무위키 기프트 문서와 대조: 새 기프트, 효과·코스트가 바뀐 기프트
 python tools/namu/fetch.py "Limbus Company/전투/목록"   # 새 장(챕터) 전투 문서가 생겼는지
 python tools/namu/to_text.py "Limbus Company_전투_목록.html" 전투목록.txt
 ```
@@ -52,7 +52,13 @@ python tools/namu/append_enemies.py
 나무위키 HTML 구조(클래스 이름 등)가 바뀌면 `enemy_parser.py`가 제목을 못 찾을 수 있습니다("NO HEADINGS FOUND").
 
 ### 기프트
-기프트 데이터(`ego_gift_data.js`)는 나무위키 기프트 문서에서 만든 것으로, 아직 자동 추가 스크립트가 없습니다. 빠진 게 있으면 기존 항목 형식대로 직접 추가합니다.
+기프트 데이터(`ego_gift_data.js`)는 나무위키 기프트 문서 3개(기본 7키워드 / 기본 7키워드 외 / 특정 테마팩 전용)에서 만든 것입니다.
+```
+python tools/namu/gift_diff.py --force   # 대조 결과 확인 → tools/_work/reports/gift_diff.txt, 바뀐 효과 전후는 gift_diff_effects.txt
+python tools/namu/gift_diff.py --apply   # 반영: 새 기프트는 나무위키 아이콘(256x256)까지 받아 추가, 바뀐 효과·코스트·등급 갱신
+```
+반영 후 다시 `gift_diff.py`를 돌려 '새 0 / 바뀐 0'인지 확인합니다. 합성 기프트의 재료(`recipe`)·쓰임(`usedIn`)은 자동으로 채우지 않으니, 새 합성 기프트가 있으면 직접 확인합니다.
+(2026-10-16부터 게임 데이터에 한국어 이름 파일이 없어져 `tools/gamedata/check_gifts.py`는 새 기프트를 잡지 못합니다.)
 
 ## 4. 점검 후 커밋
 
