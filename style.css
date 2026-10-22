@@ -458,6 +458,25 @@
   .theme-detail-src{ font-size:11px; font-weight:400; color:var(--text-faint); margin-left:6px; }
   .theme-enemy-battle{ display:flex; flex-wrap:wrap; gap:6px; padding:6px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
   .theme-enemy-chip{ font-size:12px; }
+  /* 기프트 ↔ 테마팩 연결 필터 띠 */
+  .link-filter{
+    display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0 0 12px; padding:8px 12px;
+    border:1px solid color-mix(in srgb, #8b5cf6 45%, transparent); border-radius:8px;
+    background:color-mix(in srgb, #8b5cf6 7%, transparent); font-size:12.5px; color:var(--text-muted);
+  }
+  .link-filter[hidden]{ display:none; }
+  .link-filter-text{ flex:1; min-width:0; }
+  .link-filter-text b{ color:var(--text); }
+  .link-filter-count{ font-size:11px; color:var(--text-faint); font-weight:600; }
+  .link-filter-open, .link-filter-clear{
+    font:inherit; font-size:11.5px; font-weight:700; cursor:pointer; border-radius:6px; padding:3px 9px;
+    border:1px solid color-mix(in srgb, #8b5cf6 45%, transparent); background:transparent; color:#8b5cf6;
+  }
+  .link-filter-open:hover{ border-color:#8b5cf6; background:color-mix(in srgb, #8b5cf6 10%, transparent); }
+  .link-filter-clear{ border-color:var(--border-strong); color:var(--text-muted); }
+  .link-filter-clear:hover{ color:var(--text); background:var(--surface-2); }
+  .theme-detail-sub .link-filter-open{ margin-left:8px; vertical-align:middle; }
+  .link-source-tag{ color:#8b5cf6; border-color:color-mix(in srgb, #8b5cf6 45%, transparent); }
 
   /* ---------- 적 정보 ---------- */
   .enemy-tabs-sticky{

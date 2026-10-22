@@ -5668,7 +5668,9 @@ tabDealCalc.addEventListener("click", showDealCalcView);
 /* ---- 에고 기프트 ---- */
 const GIFT_KEYWORDS = ["화상","출혈","진동","파열","침잠","충전","호흡","참격","관통","타격","범용"];
 const GIFT_RANK_COLOR = {1:"#8a8f98", 2:"#3fa34d", 3:"#3b82c4", 4:"#8b5cf6", 5:"#d4a017", 6:"#c0392b"};
-const giftState = { keyword: GIFT_KEYWORDS[0] };
+const GIFT_THEME_TAB = "테마팩 한정";
+// theme: 테마팩 상세에서 '기프트 메뉴에서 보기'로 넘어오면 그 테마팩에서 나오는 기프트만 표시
+const giftState = { keyword: GIFT_KEYWORDS[0], theme: null };
 
 function giftKeywordIconHTML(kw, size){
   if (kw === "범용") return `<span class="gift-kw-all"><span class="gift-kw-textbadge">ALL</span><img class="gift-kw-faust" src="${UI_ICON_DATA.universalFaust}" width="${size}" height="${size}" alt="" style="object-fit:contain;"></span>`;
@@ -5680,11 +5682,12 @@ function giftKeywordIconHTML(kw, size){
 function renderGiftKwTabs(){
   const wrap = document.getElementById("giftKwTabs");
   wrap.innerHTML = GIFT_KEYWORDS.map(kw =>
-    `<button type="button" class="view-tab" data-kw="${escapeHTML(kw)}" aria-pressed="${kw === giftState.keyword}">${giftKeywordIconHTML(kw,15)}${escapeHTML(kw)}</button>`
-  ).join("");
+    `<button type="button" class="view-tab" data-kw="${escapeHTML(kw)}" aria-pressed="${!giftState.theme && kw === giftState.keyword}">${giftKeywordIconHTML(kw,15)}${escapeHTML(kw)}</button>`
+  ).join("") + `<button type="button" class="view-tab" data-kw="${GIFT_THEME_TAB}" aria-pressed="${!giftState.theme && giftState.keyword === GIFT_THEME_TAB}">${GIFT_THEME_TAB} <span class="theme-cat-count">${GIFT_THEMES.size}</span></button>`;
   wrap.querySelectorAll("button").forEach(btn => {
     btn.addEventListener("click", () => {
       giftState.keyword = btn.dataset.kw;
+      giftState.theme = null;
       renderGiftKwTabs();
       renderGiftGrid();
     });
@@ -5696,7 +5699,7 @@ function giftMatchesQuery(g, q){
   const hay = fields.filter(Boolean).join(" ").toLowerCase();
   return hay.includes(q.toLowerCase());
 }
-function giftCardHTML(g){
+function giftCardHTML(g, sourceTag){
   const color = GIFT_RANK_COLOR[g.rankNum] || "#8a8f98";
   const tags = [];
   if (g.cost != null) tags.push(`<span class="gift-tag gift-tag-cost">${g.cost.toLocaleString()} 코스트</span>`);
@@ -5704,6 +5707,7 @@ function giftCardHTML(g){
   const restOther = GIFT_THEMES.has(g.name) ? giftRestrictionWithoutThemes(g) : g.restriction;
   if (restOther) tags.push(`<span class="gift-tag gift-tag-warn">${escapeHTML(restOther)}</span>`);
   if (GIFT_THEMES.has(g.name)) tags.push(`<span class="theme-chip-label">테마팩 한정</span>${giftThemeChipsHTML(g.name, 2)}`);
+  if (sourceTag) tags.unshift(`<span class="gift-tag link-source-tag">${escapeHTML(sourceTag)}</span>`);
   return `
     <div class="card gift-card" data-name="${escapeHTML(g.name)}">
       <div class="card-body">
@@ -5720,12 +5724,26 @@ function giftCardHTML(g){
 }
 function renderGiftGrid(){
   const q = document.getElementById("giftSearchInput").value.trim();
-  const list = EGO_GIFT_DATA
-    .filter(g => (q ? true : g.keyword === giftState.keyword) && giftMatchesQuery(g, q))
-    .sort((a,b) => a.rankNum - b.rankNum || a.name.localeCompare(b.name, "ko"));
+  const pack = giftState.theme ? THEME_PACKS.find(p => p.name === giftState.theme) : null;
+  const src = pack ? themeGiftSources(pack) : null;
+  let base;
+  if (src) base = EGO_GIFT_DATA.filter(g => src.has(g.name));
+  else if (q) base = EGO_GIFT_DATA;
+  else if (giftState.keyword === GIFT_THEME_TAB) base = EGO_GIFT_DATA.filter(g => GIFT_THEMES.has(g.name));
+  else base = EGO_GIFT_DATA.filter(g => g.keyword === giftState.keyword);
+  // 테마팩 필터일 땐 전용 기프트를 먼저
+  const srcRank = g => src ? (src.get(g.name).startsWith("전용") ? 0 : 1) : 0;
+  const list = base
+    .filter(g => giftMatchesQuery(g, q))
+    .sort((a,b) => srcRank(a) - srcRank(b) || a.rankNum - b.rankNum || a.name.localeCompare(b.name, "ko"));
+  renderLinkFilter("giftThemeFilter", pack && {
+    label: "테마팩", name: pack.name, desc: "에서 나오는 기프트", count: `${base.length}종`,
+    openLabel: "테마팩 상세", onOpen: () => openThemeDetail(pack.name),
+    onClear: () => { giftState.theme = null; renderGiftView(); },
+  });
   document.getElementById("giftShownCount").textContent = list.length;
   const grid = document.getElementById("giftGrid");
-  grid.innerHTML = list.map(giftCardHTML).join("");
+  grid.innerHTML = list.map(g => giftCardHTML(g, src && src.get(g.name))).join("");
   document.getElementById("giftEmptyState").hidden = list.length > 0;
   grid.querySelectorAll(".gift-card").forEach(el => {
     el.addEventListener("click", () => openGiftDetail(el.dataset.name));
@@ -5738,9 +5756,9 @@ function renderGiftView(){
 function giftLinkChipHTML(name){
   return `<button type="button" class="gift-link-chip" data-gift="${escapeHTML(name)}">${escapeHTML(name)}</button>`;
 }
-function openGiftDetail(name){
+function renderGiftDetail(name){
   const g = EGO_GIFT_DATA.find(x => x.name === name);
-  if (!g) return;
+  if (!g) return false;
   document.getElementById("giftDetailTitle").textContent = g.name;
   const rows = [];
   if (g.icon) rows.push(`<div class="detail-col-icon"><img class="gift-detail-icon" src="${g.icon}" alt="" width="72" height="72"></div>`);
@@ -5750,6 +5768,14 @@ function openGiftDetail(name){
   const restOther = GIFT_THEMES.has(g.name) ? giftRestrictionWithoutThemes(g) : g.restriction;
   if (restOther) rows.push(`<div class="skill-tt-row"><span>제한</span><span>${escapeHTML(restOther)}</span></div>`);
   if (GIFT_THEMES.has(g.name)) rows.push(`<div class="skill-tt-row"><span>테마팩 한정</span><span class="gift-recipe-row">${giftThemeChipsHTML(g.name)}</span></div>`);
+  const groupKeys = GIFT_GROUP_KEYS.get(g.name) || [];
+  if (groupKeys.length) rows.push(`<div class="skill-tt-row"><span>공통 그룹</span><span>${groupKeys.map(k => `그룹 ${escapeHTML(k)}`).join(", ")}</span></div>`);
+  const packs = giftThemeSources(g.name);
+  if (packs.size){
+    const excl = [...packs.values()].filter(v => v.startsWith("전용")).length;
+    const parts = [excl && `전용 ${excl}`, packs.size - excl && `공통 그룹 ${packs.size - excl}`].filter(Boolean).join(" · ");
+    rows.push(`<div class="skill-tt-row"><span>등장 테마팩</span><span><button type="button" class="link-filter-open" id="giftDetailToThemes">테마팩 메뉴에서 ${packs.size}개 보기</button> <span class="link-filter-count">${parts}</span></span></div>`);
+  }
   if (g.aliases && g.aliases.length) rows.push(`<div class="skill-tt-row"><span>통칭</span><span>${g.aliases.map(escapeHTML).join(", ")}</span></div>`);
   if (g.english) rows.push(`<div class="skill-tt-row"><span>영문명</span><span>${escapeHTML(g.english)}</span></div>`);
   if (g.associated) rows.push(`<div class="skill-tt-row"><span>연관</span><span>${escapeHTML(g.associated)}</span></div>`);
@@ -5770,11 +5796,15 @@ function openGiftDetail(name){
   const body = document.getElementById("giftDetailBody");
   body.innerHTML = rows.join("");
   body.querySelectorAll(".gift-link-chip").forEach(el => {
-    el.addEventListener("click", () => openGiftDetail(el.dataset.gift));
+    el.addEventListener("click", () => linkNavGo("gift", el.dataset.gift));
   });
+  const toThemes = document.getElementById("giftDetailToThemes");
+  if (toThemes) toThemes.addEventListener("click", () => showThemesForGift(g.name));
   document.getElementById("giftDetailModal").hidden = false;
+  return true;
 }
-function closeGiftDetail(){ document.getElementById("giftDetailModal").hidden = true; }
+function openGiftDetail(name){ linkNavOpen("gift", name); }
+function closeGiftDetail(){ document.getElementById("giftDetailModal").hidden = true; linkNavReset(); }
 document.getElementById("giftDetailClose").addEventListener("click", closeGiftDetail);
 document.getElementById("giftDetailBackdrop").addEventListener("click", closeGiftDetail);
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !document.getElementById("giftDetailModal").hidden) closeGiftDetail(); });
@@ -5786,6 +5816,7 @@ document.getElementById("giftClearSearch").addEventListener("click", () => {
 document.getElementById("giftResetAll").addEventListener("click", () => {
   document.getElementById("giftSearchInput").value = "";
   giftState.keyword = GIFT_KEYWORDS[0];
+  giftState.theme = null;
   renderGiftView();
 });
 
@@ -5794,7 +5825,8 @@ document.getElementById("giftResetAll").addEventListener("click", () => {
    기프트의 "'테마' 한정" 문구와 테마팩 표의 전용 기프트를 합쳐 기프트 ↔ 테마팩을 서로 연결한다. */
 const THEME_CATS = ["일반", "히든", "평행중첩 EXTREME 전용", "정보 미작성"];
 const THEME_CAT_LABEL = {"일반": "일반", "히든": "히든", "평행중첩 EXTREME 전용": "평행중첩 EXTREME", "정보 미작성": "표 미작성"};
-const themeState = { cat: THEME_CATS[0] };
+// gift: 기프트 상세에서 '테마팩 메뉴에서 보기'로 넘어오면 그 기프트가 나오는 테마팩만 표시
+const themeState = { cat: THEME_CATS[0], gift: null };
 function themeNorm(s){ return String(s || "").replace(/\s+/g, ""); }
 const THEME_BY_NORM = new Map(THEME_PACKS.map(p => [themeNorm(p.name), p]));
 function themeFind(name){
@@ -5825,6 +5857,100 @@ function giftRestrictionWithoutThemes(g){
   if (!rest || rest === "한정") return null;
   return rest;
 }
+// 기프트 이름 → 공통 그룹(THEME_GIFT_GROUPS) 키 목록
+const GIFT_GROUP_KEYS = (() => {
+  const m = new Map();
+  Object.entries(THEME_GIFT_GROUPS).forEach(([k, names]) => names.forEach(n => {
+    if (!m.has(n)) m.set(n, []);
+    m.get(n).push(k);
+  }));
+  return m;
+})();
+const sourceLabel = hardOnly => hardOnly ? "전용 · 하드" : "전용";
+// 테마팩 → 나오는 기프트 {이름 → "전용" / "그룹 A"}
+function themeGiftSources(p){
+  const m = new Map();
+  GIFT_THEMES.forEach((list, gname) => { const x = list.find(y => y.pack === p); if (x) m.set(gname, sourceLabel(x.hardOnly)); });
+  (p.groups || []).forEach(k => (THEME_GIFT_GROUPS[k] || []).forEach(n => { if (!m.has(n)) m.set(n, `그룹 ${k}`); }));
+  return m;
+}
+// 기프트 → 나오는 테마팩 {테마팩 → "전용" / "그룹 A"}
+function giftThemeSources(name){
+  const m = new Map();
+  (GIFT_THEMES.get(name) || []).forEach(x => m.set(x.pack, sourceLabel(x.hardOnly)));
+  const keys = GIFT_GROUP_KEYS.get(name) || [];
+  if (keys.length) THEME_PACKS.forEach(p => {
+    if (m.has(p)) return;
+    const k = (p.groups || []).find(x => keys.includes(x));
+    if (k) m.set(p, `그룹 ${k}`);
+  });
+  return m;
+}
+// 마지막 글자에 받침이 있는지 (이/가 고르기용, 한글이 아니면 받침 없음으로)
+function hasBatchim(word){
+  const c = String(word).trim().slice(-1).charCodeAt(0) - 0xAC00;
+  return c >= 0 && c <= 11171 && c % 28 !== 0;
+}
+// 메뉴 상단 '○○에서 나오는 △△' 필터 띠
+function renderLinkFilter(id, f){
+  const wrap = document.getElementById(id);
+  wrap.hidden = !f;
+  if (!f){ wrap.innerHTML = ""; return; }
+  wrap.innerHTML = `<span class="link-filter-text">${escapeHTML(f.label)} <b>${escapeHTML(f.name)}</b>${escapeHTML(f.desc)} <span class="link-filter-count">${escapeHTML(f.count)}</span></span>
+    <button type="button" class="link-filter-open">${escapeHTML(f.openLabel)}</button>
+    <button type="button" class="link-filter-clear">필터 해제</button>`;
+  wrap.querySelector(".link-filter-open").addEventListener("click", f.onOpen);
+  wrap.querySelector(".link-filter-clear").addEventListener("click", f.onClear);
+}
+// 상세 창 → 다른 메뉴로 넘어가기
+function showGiftsForTheme(name){
+  closeThemeDetail(); closeGiftDetail();
+  giftState.theme = name;
+  document.getElementById("giftSearchInput").value = "";
+  showGiftView();
+  window.scrollTo(0, 0);
+}
+function showThemesForGift(name){
+  closeThemeDetail(); closeGiftDetail();
+  themeState.gift = name;
+  document.getElementById("themeSearchInput").value = "";
+  showThemeView();
+  window.scrollTo(0, 0);
+}
+/* 기프트 상세 ↔ 테마팩 상세 이동 기록: 상세 창 안의 링크로 옮겨 가면 이전 창을 기록해 '뒤로' 버튼으로 돌아간다.
+   메뉴의 카드에서 새로 열거나 창을 닫으면 기록을 비운다. */
+const linkNav = { history: [], current: null };
+function linkNavShow(item){
+  document.getElementById("giftDetailModal").hidden = true;
+  document.getElementById("themeDetailModal").hidden = true;
+  const ok = item.type === "gift" ? renderGiftDetail(item.name) : renderThemeDetail(item.name);
+  if (!ok) return false;
+  linkNav.current = item;
+  const prev = linkNav.history[linkNav.history.length - 1];
+  ["giftDetailBack", "themeDetailBack"].forEach(id => {
+    const b = document.getElementById(id);
+    b.hidden = !prev;
+    b.title = prev ? `뒤로: ${prev.name}` : "";
+  });
+  return true;
+}
+function linkNavReset(){
+  linkNav.history = []; linkNav.current = null;
+  ["giftDetailBack", "themeDetailBack"].forEach(id => { document.getElementById(id).hidden = true; });
+}
+function linkNavOpen(type, name){ linkNavReset(); linkNavShow({type, name}); }
+function linkNavGo(type, name){
+  const cur = linkNav.current;
+  if (cur && cur.type === type && cur.name === name) return;
+  if (cur) linkNav.history.push(cur);
+  if (!linkNavShow({type, name}) && cur){ linkNav.history.pop(); linkNavShow(cur); }
+}
+function linkNavBack(){
+  const prev = linkNav.history.pop();
+  if (prev) linkNavShow(prev);
+}
+document.getElementById("giftDetailBack").addEventListener("click", linkNavBack);
+document.getElementById("themeDetailBack").addEventListener("click", linkNavBack);
 function giftThemeChipsHTML(name, max){
   const list = GIFT_THEMES.get(name) || [];
   const shown = max ? list.slice(0, max) : list;
@@ -5840,10 +5966,11 @@ function renderThemeCatTabs(){
   const wrap = document.getElementById("themeCatTabs");
   const counts = Object.fromEntries(THEME_CATS.map(c => [c, THEME_PACKS.filter(p => p.category === c).length]));
   wrap.innerHTML = THEME_CATS.filter(c => counts[c]).map(c =>
-    `<button type="button" class="view-tab" data-cat="${escapeHTML(c)}" aria-pressed="${c === themeState.cat}">${escapeHTML(THEME_CAT_LABEL[c])} <span class="theme-cat-count">${counts[c]}</span></button>`
+    `<button type="button" class="view-tab" data-cat="${escapeHTML(c)}" aria-pressed="${!themeState.gift && c === themeState.cat}">${escapeHTML(THEME_CAT_LABEL[c])} <span class="theme-cat-count">${counts[c]}</span></button>`
   ).join("");
   wrap.querySelectorAll("button").forEach(btn => btn.addEventListener("click", () => {
     themeState.cat = btn.dataset.cat;
+    themeState.gift = null;
     renderThemeCatTabs();
     renderThemeGrid();
   }));
@@ -5853,8 +5980,9 @@ function themeBossThumbsHTML(p, max){
   const pics = members.filter(m => m.image).slice(0, max);
   return pics.map(m => `<img class="theme-boss-thumb" src="${m.image}" alt="" title="${escapeHTML(m.name)}" loading="lazy">`).join("");
 }
-function themeCardHTML(p){
+function themeCardHTML(p, sourceTag){
   const tags = [];
+  if (sourceTag) tags.push(`<span class="gift-tag link-source-tag">${escapeHTML(sourceTag)}</span>`);
   if (p.info) tags.push(`<span class="gift-tag">${escapeHTML(p.info.replace(/\n/g, " "))}</span>`);
   if (p.normalFloors && p.normalFloors !== "-") tags.push(`<span class="gift-tag">일반 ${escapeHTML(p.normalFloors)}</span>`);
   if (p.hardFloors && p.hardFloors !== "-") tags.push(`<span class="gift-tag gift-tag-warn">하드 ${escapeHTML(p.hardFloors)}</span>`);
@@ -5875,11 +6003,21 @@ function themeCardHTML(p){
 }
 function renderThemeGrid(){
   const q = document.getElementById("themeSearchInput").value.trim();
-  const list = THEME_PACKS.filter(p => (q ? true : p.category === themeState.cat) && themeMatchesQuery(p, q));
+  const src = themeState.gift ? giftThemeSources(themeState.gift) : null;
+  const srcRank = p => src ? (src.get(p).startsWith("전용") ? 0 : 1) : 0;
+  const list = THEME_PACKS
+    .filter(p => (src ? src.has(p) : (q ? true : p.category === themeState.cat)) && themeMatchesQuery(p, q))
+    .sort((a, b) => srcRank(a) - srcRank(b));
+  const gname = themeState.gift;
+  renderLinkFilter("themeGiftFilter", src && {
+    label: "기프트", name: gname, desc: `${hasBatchim(gname) ? "이" : "가"} 나오는 테마팩`, count: `${src.size}개`,
+    openLabel: "기프트 상세", onOpen: () => openGiftDetail(gname),
+    onClear: () => { themeState.gift = null; renderThemeView(); },
+  });
   document.getElementById("themeShownCount").textContent = list.length;
   document.getElementById("themeSeasonNote").textContent = `(${THEME_SEASON} 기준)`;
   const grid = document.getElementById("themeGrid");
-  grid.innerHTML = list.map(themeCardHTML).join("");
+  grid.innerHTML = list.map(p => themeCardHTML(p, src && src.get(p))).join("");
   document.getElementById("themeEmptyState").hidden = list.length > 0;
   grid.querySelectorAll(".theme-card").forEach(el => el.addEventListener("click", () => openThemeDetail(el.dataset.theme)));
 }
@@ -5925,9 +6063,9 @@ function themeGiftChipHTML(name, hardOnly){
   const icon = g && g.icon ? `<img src="${g.icon}" alt="" width="22" height="22">` : "";
   return `<button type="button" class="gift-link-chip theme-gift-chip" data-gift="${escapeHTML(name)}">${icon}${escapeHTML(name)}${hardOnly ? `<span class="theme-hard-tag">하드</span>` : ""}</button>`;
 }
-function openThemeDetail(name){
+function renderThemeDetail(name){
   const p = THEME_PACKS.find(x => x.name === name);
-  if (!p) return;
+  if (!p) return false;
   document.getElementById("themeDetailTitle").textContent = p.name;
   const rows = [];
   const row = (k, v) => { if (v) rows.push(`<div class="skill-tt-row"><span>${k}</span><span>${escapeHTML(String(v)).replace(/\n/g, " ")}</span></div>`); };
@@ -5951,7 +6089,8 @@ function openThemeDetail(name){
   }
   rows.push(themeEnemiesHTML(p));
   const excl = p.exclusive || [];
-  rows.push(`<h4 class="theme-detail-sub">등장 E.G.O 기프트</h4>`);
+  const giftCount = [...themeGiftSources(p).keys()].filter(n => EGO_GIFT_DATA.some(g => g.name === n)).length;
+  rows.push(`<h4 class="theme-detail-sub">등장 E.G.O 기프트${giftCount ? ` <button type="button" class="link-filter-open" id="themeDetailToGifts">기프트 메뉴에서 ${giftCount}종 보기</button>` : ""}</h4>`);
   if (excl.length){
     rows.push(`<div class="theme-detail-label">전용 기프트</div><div class="gift-recipe-row theme-gift-row">${excl.map(x => themeGiftChipHTML(x.name, x.hardOnly)).join("")}</div>`);
   }
@@ -5964,11 +6103,15 @@ function openThemeDetail(name){
   if (!excl.length && !p.allNormalGifts && !(p.groups || []).length) rows.push(`<div class="dealcalc-note">기프트 정보 없음</div>`);
   const body = document.getElementById("themeDetailBody");
   body.innerHTML = rows.join("");
-  body.querySelectorAll("[data-gift]").forEach(el => el.addEventListener("click", () => openGiftDetail(el.dataset.gift)));
+  body.querySelectorAll("[data-gift]").forEach(el => el.addEventListener("click", () => linkNavGo("gift", el.dataset.gift)));
   body.querySelectorAll("[data-enemy-idx]").forEach(el => el.addEventListener("click", () => openEnemyDetail(enemyGroupIdxsFor(Number(el.dataset.enemyIdx)))));
+  const toGifts = document.getElementById("themeDetailToGifts");
+  if (toGifts) toGifts.addEventListener("click", () => showGiftsForTheme(p.name));
   document.getElementById("themeDetailModal").hidden = false;
+  return true;
 }
-function closeThemeDetail(){ document.getElementById("themeDetailModal").hidden = true; }
+function openThemeDetail(name){ linkNavOpen("theme", name); }
+function closeThemeDetail(){ document.getElementById("themeDetailModal").hidden = true; linkNavReset(); }
 document.getElementById("themeDetailClose").addEventListener("click", closeThemeDetail);
 document.getElementById("themeDetailBackdrop").addEventListener("click", closeThemeDetail);
 document.addEventListener("keydown", e => {
@@ -5985,6 +6128,7 @@ document.getElementById("themeClearSearch").addEventListener("click", () => {
 document.getElementById("themeResetAll").addEventListener("click", () => {
   document.getElementById("themeSearchInput").value = "";
   themeState.cat = THEME_CATS[0];
+  themeState.gift = null;
   renderThemeView();
 });
 // 기프트 카드·상세의 테마팩 칩 → 테마팩 상세 (문서 전체 위임)
@@ -5992,9 +6136,9 @@ document.addEventListener("click", e => {
   const chip = e.target.closest(".theme-link-chip");
   if (!chip) return;
   e.stopPropagation();
-  // 테마팩 상세는 기프트 상세보다 아래 층에 그려지므로, 기프트 상세에서 넘어올 땐 기프트 상세를 닫는다
-  closeGiftDetail();
-  openThemeDetail(chip.dataset.theme);
+  // 기프트 상세 안의 칩이면 '뒤로'로 돌아올 수 있게 이동 기록을 남긴다
+  if (chip.closest("#giftDetailModal")) linkNavGo("theme", chip.dataset.theme);
+  else openThemeDetail(chip.dataset.theme);
 }, true);
 
 /* ---- 적 정보 ---- */

@@ -98,7 +98,7 @@
     <div class="search-row" id="themeSearchRow" hidden>
       <div class="search-box">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input id="themeSearchInput" type="text" placeholder="테마팩 이름, 보스, 전용 기프트로 검색" autocomplete="off">
+        <input id="themeSearchInput" type="text" placeholder="테마팩 이름, 보스·등장 적, 전용 기프트로 검색" autocomplete="off">
         <button class="clear-btn" id="themeClearSearch" aria-label="검색어 지우기" title="검색어 지우기">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -250,6 +250,7 @@
 <div class="layout gift-layout" id="giftView" hidden>
   <main>
     <div class="view-tabs mini-tabs gift-kw-tabs" role="tablist" id="giftKwTabs"></div>
+    <div class="link-filter" id="giftThemeFilter" hidden></div>
     <div class="results-head">
       <div class="result-count"><b id="giftShownCount"></b>개 기프트 표시 중</div>
     </div>
@@ -264,6 +265,7 @@
 <div class="layout theme-layout" id="themeView" hidden>
   <main>
     <div class="view-tabs mini-tabs theme-cat-tabs" role="tablist" id="themeCatTabs"></div>
+    <div class="link-filter" id="themeGiftFilter" hidden></div>
     <div class="results-head">
       <div class="result-count"><b id="themeShownCount"></b>개 테마팩 표시 중 <span class="theme-season-note" id="themeSeasonNote"></span></div>
     </div>
@@ -623,6 +625,9 @@
   <div class="detail-modal-backdrop" id="themeDetailBackdrop"></div>
   <div class="detail-modal-panel theme-detail-panel">
     <div class="detail-modal-header">
+      <button type="button" class="detail-modal-back" id="themeDetailBack" aria-label="뒤로" hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
       <span class="detail-modal-title" id="themeDetailTitle"></span>
       <button type="button" class="detail-modal-close" id="themeDetailClose" aria-label="닫기">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -635,6 +640,9 @@
   <div class="detail-modal-backdrop" id="giftDetailBackdrop"></div>
   <div class="detail-modal-panel">
     <div class="detail-modal-header">
+      <button type="button" class="detail-modal-back" id="giftDetailBack" aria-label="뒤로" hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
       <span class="detail-modal-title" id="giftDetailTitle"></span>
       <button type="button" class="detail-modal-close" id="giftDetailClose" aria-label="닫기">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
