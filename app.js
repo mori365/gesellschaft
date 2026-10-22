@@ -5475,21 +5475,25 @@ const tabSkillSet = document.getElementById("tabSkillSet");
 const tabGift = document.getElementById("tabGift");
 const tabEnemy = document.getElementById("tabEnemy");
 const tabDealCalc = document.getElementById("tabDealCalc");
+const tabTheme = document.getElementById("tabTheme");
 function showSearchView(){
   tabSearch.setAttribute("aria-pressed","true");
   tabDeck.setAttribute("aria-pressed","false");
   tabSkillSet.setAttribute("aria-pressed","false");
   tabGift.setAttribute("aria-pressed","false");
+  tabTheme.setAttribute("aria-pressed","false");
   tabEnemy.setAttribute("aria-pressed","false");
   tabDealCalc.setAttribute("aria-pressed","false");
   document.getElementById("searchView").hidden = false;
   document.getElementById("searchRow").hidden = false;
   document.getElementById("skillSetSearchRow").hidden = true;
   document.getElementById("giftSearchRow").hidden = true;
+  document.getElementById("themeSearchRow").hidden = true;
   document.getElementById("enemySearchRow").hidden = true;
   document.getElementById("searchFooter").hidden = false;
   document.getElementById("skillSetView").hidden = true;
   document.getElementById("giftView").hidden = true;
+  document.getElementById("themeView").hidden = true;
   document.getElementById("enemyView").hidden = true;
   document.getElementById("dealCalcView").hidden = true;
   document.getElementById("deckView").hidden = true;
@@ -5502,16 +5506,19 @@ function showSkillSetView(){
   tabDeck.setAttribute("aria-pressed","false");
   tabSkillSet.setAttribute("aria-pressed","true");
   tabGift.setAttribute("aria-pressed","false");
+  tabTheme.setAttribute("aria-pressed","false");
   tabEnemy.setAttribute("aria-pressed","false");
   tabDealCalc.setAttribute("aria-pressed","false");
   document.getElementById("searchView").hidden = true;
   document.getElementById("searchRow").hidden = true;
   document.getElementById("skillSetSearchRow").hidden = false;
   document.getElementById("giftSearchRow").hidden = true;
+  document.getElementById("themeSearchRow").hidden = true;
   document.getElementById("enemySearchRow").hidden = true;
   document.getElementById("searchFooter").hidden = true;
   document.getElementById("skillSetView").hidden = false;
   document.getElementById("giftView").hidden = true;
+  document.getElementById("themeView").hidden = true;
   document.getElementById("enemyView").hidden = true;
   document.getElementById("dealCalcView").hidden = true;
   document.getElementById("deckView").hidden = true;
@@ -5525,16 +5532,19 @@ function showDeckView(){
   tabDeck.setAttribute("aria-pressed","true");
   tabSkillSet.setAttribute("aria-pressed","false");
   tabGift.setAttribute("aria-pressed","false");
+  tabTheme.setAttribute("aria-pressed","false");
   tabEnemy.setAttribute("aria-pressed","false");
   tabDealCalc.setAttribute("aria-pressed","false");
   document.getElementById("searchView").hidden = true;
   document.getElementById("searchRow").hidden = true;
   document.getElementById("skillSetSearchRow").hidden = true;
   document.getElementById("giftSearchRow").hidden = true;
+  document.getElementById("themeSearchRow").hidden = true;
   document.getElementById("enemySearchRow").hidden = true;
   document.getElementById("searchFooter").hidden = true;
   document.getElementById("skillSetView").hidden = true;
   document.getElementById("giftView").hidden = true;
+  document.getElementById("themeView").hidden = true;
   document.getElementById("enemyView").hidden = true;
   document.getElementById("dealCalcView").hidden = true;
   document.getElementById("deckView").hidden = false;
@@ -5548,16 +5558,19 @@ function showGiftView(){
   tabDeck.setAttribute("aria-pressed","false");
   tabSkillSet.setAttribute("aria-pressed","false");
   tabGift.setAttribute("aria-pressed","true");
+  tabTheme.setAttribute("aria-pressed","false");
   tabEnemy.setAttribute("aria-pressed","false");
   tabDealCalc.setAttribute("aria-pressed","false");
   document.getElementById("searchView").hidden = true;
   document.getElementById("searchRow").hidden = true;
   document.getElementById("skillSetSearchRow").hidden = true;
   document.getElementById("giftSearchRow").hidden = false;
+  document.getElementById("themeSearchRow").hidden = true;
   document.getElementById("enemySearchRow").hidden = true;
   document.getElementById("searchFooter").hidden = true;
   document.getElementById("skillSetView").hidden = true;
   document.getElementById("giftView").hidden = false;
+  document.getElementById("themeView").hidden = true;
   document.getElementById("enemyView").hidden = true;
   document.getElementById("dealCalcView").hidden = true;
   document.getElementById("deckView").hidden = true;
@@ -5571,16 +5584,19 @@ function showEnemyView(){
   tabDeck.setAttribute("aria-pressed","false");
   tabSkillSet.setAttribute("aria-pressed","false");
   tabGift.setAttribute("aria-pressed","false");
+  tabTheme.setAttribute("aria-pressed","false");
   tabEnemy.setAttribute("aria-pressed","true");
   tabDealCalc.setAttribute("aria-pressed","false");
   document.getElementById("searchView").hidden = true;
   document.getElementById("searchRow").hidden = true;
   document.getElementById("skillSetSearchRow").hidden = true;
   document.getElementById("giftSearchRow").hidden = true;
+  document.getElementById("themeSearchRow").hidden = true;
   document.getElementById("enemySearchRow").hidden = false;
   document.getElementById("searchFooter").hidden = true;
   document.getElementById("skillSetView").hidden = true;
   document.getElementById("giftView").hidden = true;
+  document.getElementById("themeView").hidden = true;
   document.getElementById("enemyView").hidden = false;
   document.getElementById("dealCalcView").hidden = true;
   document.getElementById("deckView").hidden = true;
@@ -5594,16 +5610,19 @@ function showDealCalcView(){
   tabDeck.setAttribute("aria-pressed","false");
   tabSkillSet.setAttribute("aria-pressed","false");
   tabGift.setAttribute("aria-pressed","false");
+  tabTheme.setAttribute("aria-pressed","false");
   tabEnemy.setAttribute("aria-pressed","false");
   tabDealCalc.setAttribute("aria-pressed","true");
   document.getElementById("searchView").hidden = true;
   document.getElementById("searchRow").hidden = true;
   document.getElementById("skillSetSearchRow").hidden = true;
   document.getElementById("giftSearchRow").hidden = true;
+  document.getElementById("themeSearchRow").hidden = true;
   document.getElementById("enemySearchRow").hidden = true;
   document.getElementById("searchFooter").hidden = true;
   document.getElementById("skillSetView").hidden = true;
   document.getElementById("giftView").hidden = true;
+  document.getElementById("themeView").hidden = true;
   document.getElementById("enemyView").hidden = true;
   document.getElementById("dealCalcView").hidden = false;
   document.getElementById("deckView").hidden = true;
@@ -5612,10 +5631,37 @@ function showDealCalcView(){
   updateHeaderHeightVar();
   renderDealCalcView();
 }
+function showThemeView(){
+  tabSearch.setAttribute("aria-pressed","false");
+  tabDeck.setAttribute("aria-pressed","false");
+  tabSkillSet.setAttribute("aria-pressed","false");
+  tabGift.setAttribute("aria-pressed","false");
+  tabTheme.setAttribute("aria-pressed","true");
+  tabEnemy.setAttribute("aria-pressed","false");
+  tabDealCalc.setAttribute("aria-pressed","false");
+  document.getElementById("searchView").hidden = true;
+  document.getElementById("searchRow").hidden = true;
+  document.getElementById("skillSetSearchRow").hidden = true;
+  document.getElementById("giftSearchRow").hidden = true;
+  document.getElementById("themeSearchRow").hidden = false;
+  document.getElementById("enemySearchRow").hidden = true;
+  document.getElementById("searchFooter").hidden = true;
+  document.getElementById("skillSetView").hidden = true;
+  document.getElementById("giftView").hidden = true;
+  document.getElementById("themeView").hidden = false;
+  document.getElementById("enemyView").hidden = true;
+  document.getElementById("dealCalcView").hidden = true;
+  document.getElementById("deckView").hidden = true;
+  pickerView.hidden = true;
+  ownedView.hidden = true;
+  updateHeaderHeightVar();
+  renderThemeView();
+}
 tabSearch.addEventListener("click", showSearchView);
 tabDeck.addEventListener("click", showDeckView);
 tabSkillSet.addEventListener("click", showSkillSetView);
 tabGift.addEventListener("click", showGiftView);
+tabTheme.addEventListener("click", showThemeView);
 tabEnemy.addEventListener("click", showEnemyView);
 tabDealCalc.addEventListener("click", showDealCalcView);
 
@@ -5655,7 +5701,9 @@ function giftCardHTML(g){
   const tags = [];
   if (g.cost != null) tags.push(`<span class="gift-tag gift-tag-cost">${g.cost.toLocaleString()} 코스트</span>`);
   if (!g.purchasable) tags.push(`<span class="gift-tag">구매불가</span>`);
-  if (g.restriction) tags.push(`<span class="gift-tag gift-tag-warn">${escapeHTML(g.restriction)}</span>`);
+  const restOther = GIFT_THEMES.has(g.name) ? giftRestrictionWithoutThemes(g) : g.restriction;
+  if (restOther) tags.push(`<span class="gift-tag gift-tag-warn">${escapeHTML(restOther)}</span>`);
+  if (GIFT_THEMES.has(g.name)) tags.push(`<span class="theme-chip-label">테마팩 한정</span>${giftThemeChipsHTML(g.name, 2)}`);
   return `
     <div class="card gift-card" data-name="${escapeHTML(g.name)}">
       <div class="card-body">
@@ -5699,7 +5747,9 @@ function openGiftDetail(name){
   rows.push(`<div class="skill-tt-row"><span>등급</span><span>${escapeHTML(g.rank)}</span></div>`);
   rows.push(`<div class="skill-tt-row"><span>키워드</span><span>${giftKeywordIconHTML(g.keyword,16)} ${escapeHTML(g.keyword)}</span></div>`);
   if (g.cost != null) rows.push(`<div class="skill-tt-row"><span>코스트</span><span>${g.cost.toLocaleString()}${g.purchasable ? "" : " (구매불가)"}</span></div>`);
-  if (g.restriction) rows.push(`<div class="skill-tt-row"><span>제한</span><span>${escapeHTML(g.restriction)}</span></div>`);
+  const restOther = GIFT_THEMES.has(g.name) ? giftRestrictionWithoutThemes(g) : g.restriction;
+  if (restOther) rows.push(`<div class="skill-tt-row"><span>제한</span><span>${escapeHTML(restOther)}</span></div>`);
+  if (GIFT_THEMES.has(g.name)) rows.push(`<div class="skill-tt-row"><span>테마팩 한정</span><span class="gift-recipe-row">${giftThemeChipsHTML(g.name)}</span></div>`);
   if (g.aliases && g.aliases.length) rows.push(`<div class="skill-tt-row"><span>통칭</span><span>${g.aliases.map(escapeHTML).join(", ")}</span></div>`);
   if (g.english) rows.push(`<div class="skill-tt-row"><span>영문명</span><span>${escapeHTML(g.english)}</span></div>`);
   if (g.associated) rows.push(`<div class="skill-tt-row"><span>연관</span><span>${escapeHTML(g.associated)}</span></div>`);
@@ -5739,8 +5789,185 @@ document.getElementById("giftResetAll").addEventListener("click", () => {
   renderGiftView();
 });
 
+/* ---- 거울 던전 테마팩 ----
+   데이터: theme_pack_data.js (나무위키 '거울 던전 N' 테마팩 표, tools/namu/theme_packs.py로 생성)
+   기프트의 "'테마' 한정" 문구와 테마팩 표의 전용 기프트를 합쳐 기프트 ↔ 테마팩을 서로 연결한다. */
+const THEME_CATS = ["일반", "히든", "평행중첩 EXTREME 전용", "정보 미작성"];
+const THEME_CAT_LABEL = {"일반": "일반", "히든": "히든", "평행중첩 EXTREME 전용": "평행중첩 EXTREME", "정보 미작성": "표 미작성"};
+const themeState = { cat: THEME_CATS[0] };
+function themeNorm(s){ return String(s || "").replace(/\s+/g, ""); }
+const THEME_BY_NORM = new Map(THEME_PACKS.map(p => [themeNorm(p.name), p]));
+function themeFind(name){
+  const alias = THEME_RESTRICTION_ALIAS[name];
+  return THEME_BY_NORM.get(themeNorm(alias || name)) || null;
+}
+// 기프트 이름 → 한정 테마팩 목록 (전용 기프트 표 + 기프트 '한정' 문구)
+const GIFT_THEMES = (() => {
+  const m = new Map();
+  const add = (gname, p, hardOnly) => {
+    if (!m.has(gname)) m.set(gname, []);
+    const list = m.get(gname);
+    if (!list.some(x => x.pack === p)) list.push({pack: p, hardOnly});
+  };
+  THEME_PACKS.forEach(p => (p.exclusive || []).forEach(x => add(x.name, p, x.hardOnly)));
+  EGO_GIFT_DATA.forEach(g => {
+    (String(g.restriction || "").match(/'[^']+'/g) || []).forEach(q => {
+      const p = themeFind(q.slice(1, -1));
+      if (p) add(g.name, p, /하드/.test(g.restriction));
+    });
+  });
+  return m;
+})();
+// 제한 문구에서 테마 이름 부분을 뺀 나머지 (예: "하드 난이도,'화왕지절' 한정" → "하드 난이도 한정")
+function giftRestrictionWithoutThemes(g){
+  if (!g.restriction) return null;
+  const rest = g.restriction.replace(/'[^']+'/g, "").replace(/\s*,\s*/g, ",").replace(/,+/g, ",").replace(/^,|,$/g, "").replace(/,(?=한정)/g, " ").replace(/\s+/g, " ").trim();
+  if (!rest || rest === "한정") return null;
+  return rest;
+}
+function giftThemeChipsHTML(name, max){
+  const list = GIFT_THEMES.get(name) || [];
+  const shown = max ? list.slice(0, max) : list;
+  const chips = shown.map(x => `<button type="button" class="theme-link-chip" data-theme="${escapeHTML(x.pack.name)}">${escapeHTML(x.pack.name)}${x.hardOnly ? `<span class="theme-hard-tag">하드</span>` : ""}</button>`).join("");
+  return chips + (max && list.length > max ? `<span class="gift-tag">외 ${list.length - max}개</span>` : "");
+}
+function themeMatchesQuery(p, q){
+  if (!q) return true;
+  const hay = [p.name, p.info, ...(p.bosses || []).map(b => b.name), ...(p.exclusive || []).map(x => x.name)].filter(Boolean).join(" ").toLowerCase();
+  return hay.includes(q.toLowerCase());
+}
+function renderThemeCatTabs(){
+  const wrap = document.getElementById("themeCatTabs");
+  const counts = Object.fromEntries(THEME_CATS.map(c => [c, THEME_PACKS.filter(p => p.category === c).length]));
+  wrap.innerHTML = THEME_CATS.filter(c => counts[c]).map(c =>
+    `<button type="button" class="view-tab" data-cat="${escapeHTML(c)}" aria-pressed="${c === themeState.cat}">${escapeHTML(THEME_CAT_LABEL[c])} <span class="theme-cat-count">${counts[c]}</span></button>`
+  ).join("");
+  wrap.querySelectorAll("button").forEach(btn => btn.addEventListener("click", () => {
+    themeState.cat = btn.dataset.cat;
+    renderThemeCatTabs();
+    renderThemeGrid();
+  }));
+}
+function themeBossThumbsHTML(p, max){
+  const members = (p.bosses || []).flatMap(b => b.members || []);
+  const pics = members.filter(m => m.image).slice(0, max);
+  return pics.map(m => `<img class="theme-boss-thumb" src="${m.image}" alt="" title="${escapeHTML(m.name)}" loading="lazy">`).join("");
+}
+function themeCardHTML(p){
+  const tags = [];
+  if (p.info) tags.push(`<span class="gift-tag">${escapeHTML(p.info.replace(/\n/g, " "))}</span>`);
+  if (p.normalFloors && p.normalFloors !== "-") tags.push(`<span class="gift-tag">일반 ${escapeHTML(p.normalFloors)}</span>`);
+  if (p.hardFloors && p.hardFloors !== "-") tags.push(`<span class="gift-tag gift-tag-warn">하드 ${escapeHTML(p.hardFloors)}</span>`);
+  if (p.floorLength) tags.push(`<span class="gift-tag">${escapeHTML(p.floorLength)}전투</span>`);
+  const excl = (p.exclusive || []).length;
+  if (excl) tags.push(`<span class="gift-tag gift-tag-cost">전용 기프트 ${excl}</span>`);
+  const bosses = (p.bosses || []).map(b => b.name).join(" · ");
+  return `
+    <div class="card theme-card" data-theme="${escapeHTML(p.name)}">
+      <div class="card-body">
+        <div class="theme-card-thumbs">${themeBossThumbsHTML(p, 4) || `<span class="theme-card-nothumb">?</span>`}</div>
+        <div class="gift-card-name">${escapeHTML(p.name)}</div>
+        ${bosses ? `<div class="theme-card-bosses">${escapeHTML(bosses)}</div>` : (p.category === "정보 미작성" ? `<div class="theme-card-bosses">나무위키 테마팩 표에 아직 정보가 없습니다</div>` : "")}
+        <div class="gift-card-foot">${tags.join("")}</div>
+      </div>
+    </div>`;
+}
+function renderThemeGrid(){
+  const q = document.getElementById("themeSearchInput").value.trim();
+  const list = THEME_PACKS.filter(p => (q ? true : p.category === themeState.cat) && themeMatchesQuery(p, q));
+  document.getElementById("themeShownCount").textContent = list.length;
+  document.getElementById("themeSeasonNote").textContent = `(${THEME_SEASON} 기준)`;
+  const grid = document.getElementById("themeGrid");
+  grid.innerHTML = list.map(themeCardHTML).join("");
+  document.getElementById("themeEmptyState").hidden = list.length > 0;
+  grid.querySelectorAll(".theme-card").forEach(el => el.addEventListener("click", () => openThemeDetail(el.dataset.theme)));
+}
+function renderThemeView(){
+  renderThemeCatTabs();
+  renderThemeGrid();
+}
+function enemyIdxByName(name){
+  const i = ENEMY_DATA.findIndex(e => e.name === name && e.role !== "sub");
+  return i >= 0 ? i : ENEMY_DATA.findIndex(e => e.name === name);
+}
+function themeGiftChipHTML(name, hardOnly){
+  const g = EGO_GIFT_DATA.find(x => x.name === name);
+  const icon = g && g.icon ? `<img src="${g.icon}" alt="" width="22" height="22">` : "";
+  return `<button type="button" class="gift-link-chip theme-gift-chip" data-gift="${escapeHTML(name)}">${icon}${escapeHTML(name)}${hardOnly ? `<span class="theme-hard-tag">하드</span>` : ""}</button>`;
+}
+function openThemeDetail(name){
+  const p = THEME_PACKS.find(x => x.name === name);
+  if (!p) return;
+  document.getElementById("themeDetailTitle").textContent = p.name;
+  const rows = [];
+  const row = (k, v) => { if (v) rows.push(`<div class="skill-tt-row"><span>${k}</span><span>${escapeHTML(String(v)).replace(/\n/g, " ")}</span></div>`); };
+  row("분류", THEME_CAT_LABEL[p.category] || p.category);
+  row("정보", p.info);
+  row("일반 출현", p.normalFloors);
+  row("하드 출현", p.hardFloors);
+  row("층 길이", p.floorLength && `${p.floorLength}전투`);
+  if (p.reward && p.reward !== "-") row("보상", p.reward);
+  if (p.category === "정보 미작성"){
+    rows.push(`<div class="dealcalc-note">나무위키 테마팩 표에 아직 이 테마팩 정보가 없습니다. 기프트의 '한정' 문구로 확인된 전용 기프트만 표시합니다.</div>`);
+  }
+  if ((p.bosses || []).length){
+    rows.push(`<h4 class="theme-detail-sub">출현할 수 있는 보스</h4><div class="theme-boss-list">` + p.bosses.map(b => `
+      <div class="theme-boss-battle">${(b.members || []).map(m => {
+        const idx = m.enemy ? enemyIdxByName(m.enemy) : -1;
+        return `<button type="button" class="theme-boss${idx >= 0 ? " is-link" : ""}" ${idx >= 0 ? `data-enemy-idx="${idx}"` : "disabled"} title="${idx >= 0 ? "적 정보 보기" : "사이트 적 데이터에 없는 보스"}">
+          ${m.image ? `<img src="${m.image}" alt="" loading="lazy">` : `<span class="theme-boss-noimg">?</span>`}
+          <span>${escapeHTML(m.name)}</span></button>`;
+      }).join(`<span class="theme-boss-and">&amp;</span>`)}</div>`).join("") + `</div>`);
+  }
+  const excl = p.exclusive || [];
+  rows.push(`<h4 class="theme-detail-sub">등장 E.G.O 기프트</h4>`);
+  if (excl.length){
+    rows.push(`<div class="theme-detail-label">전용 기프트</div><div class="gift-recipe-row theme-gift-row">${excl.map(x => themeGiftChipHTML(x.name, x.hardOnly)).join("")}</div>`);
+  }
+  if (p.allNormalGifts) rows.push(`<div class="theme-detail-label">모든 통상 기프트</div>`);
+  (p.groups || []).forEach(gk => {
+    const names = THEME_GIFT_GROUPS[gk] || [];
+    rows.push(`<details class="theme-group"><summary>공통 그룹 ${escapeHTML(gk)} <span class="theme-cat-count">${names.length}종</span></summary>
+      <div class="gift-recipe-row theme-gift-row">${names.map(n => EGO_GIFT_DATA.some(g => g.name === n) ? themeGiftChipHTML(n, false) : `<span class="gift-tag">${escapeHTML(n)}</span>`).join("")}</div></details>`);
+  });
+  if (!excl.length && !p.allNormalGifts && !(p.groups || []).length) rows.push(`<div class="dealcalc-note">기프트 정보 없음</div>`);
+  const body = document.getElementById("themeDetailBody");
+  body.innerHTML = rows.join("");
+  body.querySelectorAll("[data-gift]").forEach(el => el.addEventListener("click", () => openGiftDetail(el.dataset.gift)));
+  body.querySelectorAll("[data-enemy-idx]").forEach(el => el.addEventListener("click", () => openEnemyDetail(enemyGroupIdxsFor(Number(el.dataset.enemyIdx)))));
+  document.getElementById("themeDetailModal").hidden = false;
+}
+function closeThemeDetail(){ document.getElementById("themeDetailModal").hidden = true; }
+document.getElementById("themeDetailClose").addEventListener("click", closeThemeDetail);
+document.getElementById("themeDetailBackdrop").addEventListener("click", closeThemeDetail);
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape" || document.getElementById("themeDetailModal").hidden) return;
+  // 위에 기프트·적 상세가 열려 있으면 그쪽이 먼저 닫힌다
+  if (!document.getElementById("giftDetailModal").hidden || !document.getElementById("enemyDetailModal").hidden) return;
+  closeThemeDetail();
+});
+document.getElementById("themeSearchInput").addEventListener("input", renderThemeGrid);
+document.getElementById("themeClearSearch").addEventListener("click", () => {
+  document.getElementById("themeSearchInput").value = "";
+  renderThemeGrid();
+});
+document.getElementById("themeResetAll").addEventListener("click", () => {
+  document.getElementById("themeSearchInput").value = "";
+  themeState.cat = THEME_CATS[0];
+  renderThemeView();
+});
+// 기프트 카드·상세의 테마팩 칩 → 테마팩 상세 (문서 전체 위임)
+document.addEventListener("click", e => {
+  const chip = e.target.closest(".theme-link-chip");
+  if (!chip) return;
+  e.stopPropagation();
+  // 테마팩 상세는 기프트 상세보다 아래 층에 그려지므로, 기프트 상세에서 넘어올 땐 기프트 상세를 닫는다
+  closeGiftDetail();
+  openThemeDetail(chip.dataset.theme);
+}, true);
+
 /* ---- 적 정보 ---- */
-const ENEMY_CHAPTERS = [...new Set(ENEMY_DATA.slice().sort((a,b) => a.chapterNum - b.chapterNum).map(e => e.chapter))];
+const ENEMY_CHAPTERS =[...new Set(ENEMY_DATA.slice().sort((a,b) => a.chapterNum - b.chapterNum).map(e => e.chapter))];
 // "N장"과 "N장 집중 전투"는 나무위키에서도 같은 챕터의 하위 서브탭으로 존재하며
 // (4~8장에만 있음, 그 외 챕터는 애초에 집중 전투 자체가 없음), 탭 목록에서는
 // 베이스 챕터명만 최상위로 노출하고 집중 전투 여부는 서브탭으로 따로 표시한다.

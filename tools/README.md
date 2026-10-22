@@ -60,6 +60,15 @@ python tools/namu/gift_diff.py --apply   # 반영: 새 기프트는 나무위키
 반영 후 다시 `gift_diff.py`를 돌려 '새 0 / 바뀐 0'인지 확인합니다. 합성 기프트의 재료(`recipe`)·쓰임(`usedIn`)은 자동으로 채우지 않으니, 새 합성 기프트가 있으면 직접 확인합니다.
 (2026-10-16부터 게임 데이터에 한국어 이름 파일이 없어져 `tools/gamedata/check_gifts.py`는 새 기프트를 잡지 못합니다.)
 
+### 거울 던전 테마팩
+테마팩 메뉴 데이터(`theme_pack_data.js`)는 나무위키 '거울 던전 N' 문서의 테마팩 표(일반·히든·평행중첩 EXTREME)와 기프트 그룹 정의에서 만듭니다.
+```
+python tools/namu/theme_packs.py --force --no-images   # 결과 확인 (보스 초상화 안 받음)
+python tools/namu/theme_packs.py                       # 반영 (사이트 적 데이터에 없는 보스는 나무위키 초상화를 images/theme_bosses/에 저장)
+```
+- 새 시즌이면 `--season N`. 기프트의 "'테마' 한정" 문구에만 있고 표에 없는 테마는 '표 미작성'으로 들어갑니다(나무위키 표가 채워지면 다시 실행).
+- 기프트를 추가·수정한 뒤에도 다시 실행해야 전용 기프트 연결이 갱신됩니다.
+
 ## 4. 점검 후 커밋
 
 ```
