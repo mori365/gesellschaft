@@ -5581,7 +5581,7 @@ function renderGiftGrid(){
   else if (giftState.keyword === GIFT_THEME_TAB) base = EGO_GIFT_DATA.filter(g => GIFT_THEMES.has(g.name));
   else base = EGO_GIFT_DATA.filter(g => g.keyword === giftState.keyword);
   // 테마팩 필터일 땐 전용 기프트를 먼저
-  const srcRank = g => src ? (src.get(g.name).startsWith("전용") ? 0 : 1) : 0;
+  const srcRank = g => src ? sourceRank(src.get(g.name)) : 0;
   const list = base
     .filter(g => giftMatchesQuery(g, q))
     .sort((a,b) => srcRank(a) - srcRank(b) || a.rankNum - b.rankNum || a.name.localeCompare(b.name, "ko"));
@@ -5621,8 +5621,8 @@ function renderGiftDetail(name){
   if (groupKeys.length) rows.push(`<div class="skill-tt-row"><span>공통 그룹</span><span>${groupKeys.map(k => `그룹 ${escapeHTML(k)}`).join(", ")}</span></div>`);
   const packs = giftThemeSources(g.name);
   if (packs.size){
-    const excl = [...packs.values()].filter(v => v.startsWith("전용")).length;
-    const parts = [excl && `전용 ${excl}`, packs.size - excl && `공통 그룹 ${packs.size - excl}`].filter(Boolean).join(" · ");
+    const byRank = [0, 1, 2].map(r => [...packs.values()].filter(v => sourceRank(v) === r).length);
+    const parts = [byRank[0] && `전용 ${byRank[0]}`, byRank[1] && `표에 기재 ${byRank[1]}`, byRank[2] && `공통 그룹 ${byRank[2]}`].filter(Boolean).join(" · ");
     rows.push(`<div class="skill-tt-row"><span>등장 테마팩</span><span><button type="button" class="link-filter-open" id="giftDetailToThemes">테마팩 메뉴에서 ${packs.size}개 보기</button> <span class="link-filter-count">${parts}</span></span></div>`);
   }
   const choices = GIFT_CHOICES.get(g.name) || [];
@@ -5718,17 +5718,24 @@ const GIFT_GROUP_KEYS = (() => {
   return m;
 })();
 const sourceLabel = hardOnly => hardOnly ? "전용 · 하드" : "전용";
-// 테마팩 → 나오는 기프트 {이름 → "전용" / "그룹 A"}
+// 정렬 순서: 전용 → 표에 이름이 적힌 일반 기프트(등장) → 공통 그룹
+const sourceRank = label => label.startsWith("전용") ? 0 : (label.startsWith("등장") ? 1 : 2);
+// 테마팩 → 나오는 기프트 {이름 → "전용" / "등장" / "그룹 A"}
 function themeGiftSources(p){
   const m = new Map();
   GIFT_THEMES.forEach((list, gname) => { const x = list.find(y => y.pack === p); if (x) m.set(gname, sourceLabel(x.hardOnly)); });
+  (p.extraGifts || []).forEach(x => { if (!m.has(x.name)) m.set(x.name, x.hardOnly ? "등장 · 하드" : "등장"); });
   (p.groups || []).forEach(k => (THEME_GIFT_GROUPS[k] || []).forEach(n => { if (!m.has(n)) m.set(n, `그룹 ${k}`); }));
   return m;
 }
-// 기프트 → 나오는 테마팩 {테마팩 → "전용" / "그룹 A"}
+// 기프트 → 나오는 테마팩 {테마팩 → "전용" / "등장" / "그룹 A"}
 function giftThemeSources(name){
   const m = new Map();
   (GIFT_THEMES.get(name) || []).forEach(x => m.set(x.pack, sourceLabel(x.hardOnly)));
+  THEME_PACKS.forEach(p => {
+    const x = (p.extraGifts || []).find(y => y.name === name);
+    if (x && !m.has(p)) m.set(p, x.hardOnly ? "등장 · 하드" : "등장");
+  });
   const keys = GIFT_GROUP_KEYS.get(name) || [];
   if (keys.length) THEME_PACKS.forEach(p => {
     if (m.has(p)) return;
@@ -5858,7 +5865,7 @@ function themeCardHTML(p, sourceTag){
 function renderThemeGrid(){
   const q = document.getElementById("themeSearchInput").value.trim();
   const src = themeState.gift ? giftThemeSources(themeState.gift) : null;
-  const srcRank = p => src ? (src.get(p).startsWith("전용") ? 0 : 1) : 0;
+  const srcRank = p => src ? sourceRank(src.get(p)) : 0;
   const list = THEME_PACKS
     .filter(p => (src ? src.has(p) : (q ? true : p.category === themeState.cat)) && themeMatchesQuery(p, q))
     .sort((a, b) => srcRank(a) - srcRank(b));
@@ -5965,13 +5972,19 @@ function renderThemeDetail(name){
   if (excl.length){
     rows.push(`<div class="theme-detail-label">전용 기프트</div><div class="gift-recipe-row theme-gift-row">${excl.map(x => themeGiftChipHTML(x.name, x.hardOnly)).join("")}</div>`);
   }
+  const extra = p.extraGifts || [];
+  if (extra.length){
+    rows.push(`<div class="theme-detail-label">그 밖에 나오는 기프트 <span class="theme-cat-count">테마팩 한정은 아님</span></div><div class="gift-recipe-row theme-gift-row">${extra.map(x => themeGiftChipHTML(x.name, x.hardOnly)).join("")}</div>`);
+  }
+  const kinds = p.giftKinds || [];
+  if (kinds.length) rows.push(`<div class="theme-detail-label">키워드·속성 기프트: ${kinds.map(escapeHTML).join(" · ")}</div>`);
   if (p.allNormalGifts) rows.push(`<div class="theme-detail-label">모든 통상 기프트</div>`);
   (p.groups || []).forEach(gk => {
     const names = THEME_GIFT_GROUPS[gk] || [];
     rows.push(`<details class="theme-group"><summary>공통 그룹 ${escapeHTML(gk)} <span class="theme-cat-count">${names.length}종</span></summary>
       <div class="gift-recipe-row theme-gift-row">${names.map(n => EGO_GIFT_DATA.some(g => g.name === n) ? themeGiftChipHTML(n, false) : `<span class="gift-tag">${escapeHTML(n)}</span>`).join("")}</div></details>`);
   });
-  if (!excl.length && !p.allNormalGifts && !(p.groups || []).length) rows.push(`<div class="dealcalc-note">기프트 정보 없음</div>`);
+  if (!excl.length && !extra.length && !kinds.length && !p.allNormalGifts && !(p.groups || []).length) rows.push(`<div class="dealcalc-note">기프트 정보 없음</div>`);
   const body = document.getElementById("themeDetailBody");
   body.innerHTML = rows.join("");
   body.querySelectorAll("[data-gift]").forEach(el => el.addEventListener("click", () => linkNavGo("gift", el.dataset.gift)));

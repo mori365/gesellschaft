@@ -37,11 +37,13 @@ def imgs(c):
                 out.append((H.unescape(a.group(1)), u))
     return out
 
-def parse_gifts_cell(c, all_gift_names):
-    """등장 E.G.O 기프트 칸: [그룹 X] 목록 + 전용 기프트(이름 [IMG] [H?])"""
+def parse_gifts_cell(c, all_gift_names, theme_only):
+    """등장 E.G.O 기프트 칸: [그룹 X] 목록 + 기프트 이름(이름 [IMG] [H?]) + 'X 기프트'·'X 속성 기프트'(키워드·속성 분류).
+    이름이 적힌 기프트 중 나무위키 '특정 테마팩 전용 기프트' 문서에 있는 것(theme_only)만 전용(excl)이고,
+    덧붙인 반창고·고혈처럼 일반 기프트가 적힌 것은 그 밖에 나오는 기프트(extra)로 나눈다."""
     groups = sorted(set(re.findall(r'\[그룹 ([A-Z])\]', H.unescape(c))))
     allnormal = '모든 통상 기프트' in H.unescape(c)
-    excl = []
+    excl, extra, kinds = [], [], []
     t = H.unescape(re.sub(r'<img[^>]*>', ' ', re.sub(r'<br[^>]*>', '\n', c)))
     t = re.sub(r'<[^>]+>', ' ', t)
     for line in t.split('\n'):
@@ -50,8 +52,11 @@ def parse_gifts_cell(c, all_gift_names):
         name = re.sub(r'\[[^\]]*\]', ' ', line); name = re.sub(r'\s+', ' ', name).strip()
         if not name or name == '모든 통상 기프트': continue
         if norm(name) in all_gift_names:
-            excl.append({'name': all_gift_names[norm(name)], 'hardOnly': hard})
-    return groups, allnormal, excl
+            g = all_gift_names[norm(name)]
+            (excl if g in theme_only else extra).append({'name': g, 'hardOnly': hard})
+        elif re.fullmatch(r'\S+( 속성)? 기프트', name):
+            kinds.append(name[:-len(' 기프트')])
+    return groups, allnormal, excl, extra, kinds
 
 def boss_list(c):
     """보스 칸: 줄마다 한 전투(여러 보스면 ' & '로 연결). 초상화 alt는 'portrait 이름'(길면 '...'로 잘림)."""
@@ -76,6 +81,8 @@ def main():
     seg = html[a:b]
     gifts = json.loads(jsobj._to_json(jsobj._find_block(open(os.path.join(paths.REPO, 'ego_gift_data.js'), encoding='utf-8').read(), 'EGO_GIFT_DATA')))
     gift_names = {norm(g['name']): g['name'] for g in gifts}
+    # 테마팩 한정 = 나무위키 'E.G.O 기프트/특정 테마팩 전용 기프트' 문서의 기프트 (gift_diff.py가 sourcePage 'theme'로 기록)
+    theme_only = {g['name'] for g in gifts if g.get('sourcePage') == 'theme'}
 
     # 기프트 그룹 정의: "[그룹 A] ... : 이름, 이름, ... - N종"
     groups = {}
@@ -102,7 +109,7 @@ def main():
             bc = next((v for k, v in row.items() if '보스' in k), '')
             p['bosses'] = boss_list(bc)
             gc = next((v for k, v in row.items() if '기프트' in k), '')
-            p['groups'], p['allNormalGifts'], p['exclusive'] = parse_gifts_cell(gc, gift_names)
+            p['groups'], p['allNormalGifts'], p['exclusive'], p['extraGifts'], p['giftKinds'] = parse_gifts_cell(gc, gift_names, theme_only)
             rw = next((v for k, v in row.items() if k.startswith('보상')), None)
             p['reward'] = text(rw) if rw else None
             packs.append(p)
@@ -117,7 +124,7 @@ def main():
                 cand = next((p for kk, p in known.items() if kk.replace('과', '의') == k.replace('과', '의')), None)
                 if cand: known[k] = cand; alias[th] = cand['name']; continue
                 known[k] = {'name': th, 'category': '정보 미작성', 'season': None, 'info': None, 'normalFloors': None, 'hardFloors': None,
-                            'floorLength': None, 'bosses': [], 'groups': [], 'allNormalGifts': False, 'exclusive': [], 'reward': None}
+                            'floorLength': None, 'bosses': [], 'groups': [], 'allNormalGifts': False, 'exclusive': [], 'extraGifts': [], 'giftKinds': [], 'reward': None}
                 packs.append(known[k])
             p = known[k]
             if not any(e['name'] == g['name'] for e in p['exclusive']):
@@ -192,7 +199,8 @@ def main():
 
     header = (f"// 나무위키 'Limbus Company/거울 던전/거울 던전 {season}' 테마팩 표에서 추출 (문서 최근 수정 {last_modified(html)}).\n"
               "// category: 일반 / 히든 / 평행중첩 EXTREME 전용 / 정보 미작성(기프트의 '한정' 문구에만 있고 표에는 없는 테마)\n"
-              "// exclusive: 전용 기프트(hardOnly=하드 한정), groups: 공통 기프트 그룹(THEME_GIFT_GROUPS), bosses[].image: 적 데이터 이미지 또는 나무위키 초상화\n"
+              "// exclusive: 전용 기프트(나무위키 '특정 테마팩 전용 기프트' 문서의 것, hardOnly=하드 한정), extraGifts: 표에 이름이 적힌 일반 기프트, giftKinds: '참격'·'분노 속성' 같은 키워드·속성 기프트 분류\n"
+              "// groups: 공통 기프트 그룹(THEME_GIFT_GROUPS), bosses[].image: 적 데이터 이미지 또는 나무위키 초상화\n"
               "// image: 테마팩 그림(게임 추출본, 연심 yeon-sim.github.io 저장소에서 받음)\n"
               "// tools/namu/theme_packs.py 로 다시 만든다.\n")
     js = (header + f'const THEME_SEASON = {json.dumps(SEASON_TITLES.get(season, f"거울 던전 {season}"), ensure_ascii=False)};\n'
