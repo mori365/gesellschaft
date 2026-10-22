@@ -5492,6 +5492,9 @@ function activateView(tab){
     v.tab.setAttribute("aria-pressed", String(v.tab === tab));
     if (v.tab === tab) v.ids.forEach(id => { document.getElementById(id).hidden = false; });
   });
+  // 휴대폰에서 탭 줄이 옆으로 밀려 있을 때 고른 탭이 보이게
+  const bar = tab.parentElement;
+  if (bar.scrollWidth > bar.clientWidth) bar.scrollLeft = tab.offsetLeft - (bar.clientWidth - tab.offsetWidth) / 2;
   updateHeaderHeightVar();
 }
 function showSearchView(){ activateView(tabSearch); }
@@ -5844,7 +5847,8 @@ function themeCardHTML(p, sourceTag){
   return `
     <div class="card theme-card" data-theme="${escapeHTML(p.name)}">
       <div class="card-body">
-        <div class="theme-card-thumbs">${themeBossThumbsHTML(p, 4) || `<span class="theme-card-nothumb">?</span>`}</div>
+        ${p.image ? `<img class="theme-pack-art" src="${p.image}" alt="" loading="lazy">`
+          : `<div class="theme-card-thumbs">${themeBossThumbsHTML(p, 4) || `<span class="theme-card-nothumb">?</span>`}</div>`}
         <div class="gift-card-name">${escapeHTML(p.name)}</div>
         ${bosses ? `<div class="theme-card-bosses">${escapeHTML(bosses)}</div>` : (p.category === "정보 미작성" ? `<div class="theme-card-bosses">나무위키 테마팩 표에 아직 정보가 없습니다</div>` : "")}
         <div class="gift-card-foot">${tags.join("")}</div>
@@ -5929,12 +5933,18 @@ function renderThemeDetail(name){
   document.getElementById("themeDetailTitle").textContent = p.name;
   const rows = [];
   const row = (k, v) => { if (v) rows.push(`<div class="skill-tt-row"><span>${k}</span><span>${escapeHTML(String(v)).replace(/\n/g, " ")}</span></div>`); };
+  // 테마팩 그림 옆에 기본 정보
+  const headStart = rows.length;
   row("분류", THEME_CAT_LABEL[p.category] || p.category);
   row("정보", p.info);
   row("일반 출현", p.normalFloors);
   row("하드 출현", p.hardFloors);
   row("층 길이", p.floorLength && `${p.floorLength}전투`);
   if (p.reward && p.reward !== "-") row("보상", p.reward);
+  if (p.image){
+    const info = rows.splice(headStart).join("");
+    rows.push(`<div class="theme-detail-head"><img class="theme-detail-art" src="${p.image}" alt=""><div class="theme-detail-info">${info}</div></div>`);
+  }
   if (p.category === "정보 미작성"){
     rows.push(`<div class="dealcalc-note">나무위키 테마팩 표에 아직 이 테마팩 정보가 없습니다. 기프트의 '한정' 문구로 확인된 전용 기프트와 게임 데이터의 등장 적만 표시합니다.</div>`);
   }

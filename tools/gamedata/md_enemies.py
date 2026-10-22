@@ -35,6 +35,16 @@ def theme_names():
             if x.get('name'): names.setdefault(int(x['id']), x['name'])
     return names
 
+def theme_sprites():
+    """{norm(테마 이름): 테마팩 그림 이름(uiConfigs.packSpriteId, 예: 'Canto_I')}"""
+    names = theme_names()
+    out = {}
+    for t in _list('mirrordungeon-theme-floor'):
+        name = (names.get(t['id']) or t.get('desc') or '').strip()
+        sprite = (t.get('uiConfigs') or {}).get('packSpriteId')
+        if name and sprite: out.setdefault(norm(name), sprite)
+    return out
+
 def theme_events():
     """{norm(테마 이름): {'name', 'events': [이벤트 id, ...]}} — 테마의 eventPool(그 테마에서 나올 수 있는 선택지)"""
     names = theme_names()

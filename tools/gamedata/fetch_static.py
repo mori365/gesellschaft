@@ -3,7 +3,7 @@
 
     python tools/gamedata/fetch_static.py          # 인격·E.G.O·스킬·패시브
     python tools/gamedata/fetch_static.py --loc    # + 한국어 이름(인격·E.G.O·기프트)
-    python tools/gamedata/fetch_static.py --md     # + 거울 던전 테마팩·전투·적 유닛·영어 적 이름 (theme_packs.py용)
+    python tools/gamedata/fetch_static.py --md     # + 거울 던전 테마팩·전투·적 유닛·영어 적 이름 (theme_packs.py·choice_events.py용)
 
 환경 변수 GITHUB_TOKEN이 있으면 API 요청에 사용한다(없어도 되지만 시간당 요청 제한이 낮음)."""
 import hashlib, json, os, sys, urllib.request
@@ -19,6 +19,23 @@ LOC_PREFIXES = ('KR_Personalities', 'KR_Egos', 'KR_EGOgift_MirrorDungeon')
 # 2026-10-16부터 원본에서 한국어(kr) 적 이름이 빠져 영어(en)만 받는다. 한국어는 kr_enemy_names·kr_theme_names_20261002.json 사본 사용
 MD_DIRS = ['mirrordungeon-theme-floor', 'battle-mirrordungeon', 'enemy', 'abnormality-unit']
 LOC_EN = 'src/OpenLethe.Resources/Localize/en'
+# OpenLethe에 없는 파일: 히든 테마(뽕.황)는 팬 사이트 연심(yeon-sim.github.io) 저장소의 게임 추출본에서 받는다
+EXTRA_MD = [('https://raw.githubusercontent.com/yeon-sim/yeon-sim.github.io/master/data/floor_data/mirrordungeon-theme-floor-hidden.json',
+             os.path.join('mirrordungeon-theme-floor', 'mirrordungeon-theme-floor-hidden.json'))]
+
+def sync_extra():
+    changed = []
+    for url, rel in EXTRA_MD:
+        dst = os.path.join(paths.GAMEDATA, rel)
+        try:
+            data = urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'gesellschaft-tools'}), timeout=60).read()
+        except Exception as ex:
+            print(f'받기 실패: {url} ({ex})'); continue
+        if os.path.exists(dst) and open(dst, 'rb').read() == data: continue
+        changed.append(f"{'changed' if os.path.exists(dst) else 'new'}	{rel}")
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        open(dst, 'wb').write(data)
+    return changed
 
 def targets(want_loc, want_md):
     """(원격 폴더, 로컬 폴더, 파일 이름 필터) 목록"""
@@ -99,6 +116,8 @@ def main():
     except Exception as ex:  # API 접속이 막혔거나 요청 제한
         print(f'GitHub API로 받기 실패({ex}) → git 복제로 대신 받습니다')
         out = sync_via_git(pairs)
+    if '--md' in sys.argv:
+        out += sync_extra()
     print('\n'.join(out) if out else '변경 없음')
     open(os.path.join(paths.REPORTS, 'fetch_static.txt'), 'w', encoding='utf-8').write('\n'.join(out))
 
