@@ -62,12 +62,17 @@ python tools/namu/gift_diff.py --apply   # 반영: 새 기프트는 나무위키
 
 ### 거울 던전 테마팩
 테마팩 메뉴 데이터(`theme_pack_data.js`)는 나무위키 '거울 던전 N' 문서의 테마팩 표(일반·히든·평행중첩 EXTREME)와 기프트 그룹 정의에서 만듭니다.
+등장 적(일반·환상체·하드·보스 전투)은 게임 데이터에서 채우므로 먼저 `--md`로 받아 둡니다.
 ```
+python tools/gamedata/fetch_static.py --md            # 거울 던전 테마·전투·적 유닛·영어 이름
+python tools/gamedata/md_enemies.py 잊혀진 자들        # (확인용) 테마 하나의 등장 적
 python tools/namu/theme_packs.py --force --no-images   # 결과 확인 (보스 초상화 안 받음)
 python tools/namu/theme_packs.py                       # 반영 (사이트 적 데이터에 없는 보스는 나무위키 초상화를 images/theme_bosses/에 저장)
 ```
 - 새 시즌이면 `--season N`. 기프트의 "'테마' 한정" 문구에만 있고 표에 없는 테마는 '표 미작성'으로 들어갑니다(나무위키 표가 채워지면 다시 실행).
 - 기프트를 추가·수정한 뒤에도 다시 실행해야 전용 기프트 연결이 갱신됩니다.
+- 적·테마 한국어 이름은 원본에서 한국어가 빠지기 전 사본(`tools/gamedata/kr_enemy_names_20261002.json`, `kr_theme_names_20261002.json`)을 씁니다.
+  그 뒤 추가된 적은 영어 이름으로 나오니, 실행 결과에 영어 이름이 보이면 사이트 적 정보 이름에 맞춰 `kr_enemy_names_20261002.json`의 `fromEnglish`에, 새 테마는 `kr_theme_names_20261002.json`의 `names`에 넣습니다.
 
 ## 4. 점검 후 커밋
 

@@ -5833,7 +5833,7 @@ function giftThemeChipsHTML(name, max){
 }
 function themeMatchesQuery(p, q){
   if (!q) return true;
-  const hay = [p.name, p.info, ...(p.bosses || []).map(b => b.name), ...(p.exclusive || []).map(x => x.name)].filter(Boolean).join(" ").toLowerCase();
+  const hay = [p.name, p.info, ...(p.bosses || []).map(b => b.name), ...(p.exclusive || []).map(x => x.name), ...themeEnemyNames(p)].filter(Boolean).join(" ").toLowerCase();
   return hay.includes(q.toLowerCase());
 }
 function renderThemeCatTabs(){
@@ -5861,7 +5861,8 @@ function themeCardHTML(p){
   if (p.floorLength) tags.push(`<span class="gift-tag">${escapeHTML(p.floorLength)}전투</span>`);
   const excl = (p.exclusive || []).length;
   if (excl) tags.push(`<span class="gift-tag gift-tag-cost">전용 기프트 ${excl}</span>`);
-  const bosses = (p.bosses || []).map(b => b.name).join(" · ");
+  // 나무위키 보스 정보가 없으면 게임 데이터의 보스 전투 적 이름
+  const bosses = (p.bosses || []).map(b => b.name).join(" · ") || [...new Set(((p.enemies || {}).boss || []).flat())].join(" · ");
   return `
     <div class="card theme-card" data-theme="${escapeHTML(p.name)}">
       <div class="card-body">
@@ -5890,6 +5891,35 @@ function enemyIdxByName(name){
   const i = ENEMY_DATA.findIndex(e => e.name === name && e.role !== "sub");
   return i >= 0 ? i : ENEMY_DATA.findIndex(e => e.name === name);
 }
+// 게임 데이터 이름 → 사이트 적: 이름이 같거나, 사이트 쪽 '[햇살]' 같은 구분 표기를 뗀 이름이 같으면 연결
+function enemyIdxByGameName(name){
+  const i = enemyIdxByName(name);
+  return i >= 0 ? i : ENEMY_DATA.findIndex(e => e.name.replace(/\s*\[[^\]]*\]$/, "") === name);
+}
+const THEME_ENEMY_POOLS = [["normal", "일반 전투"], ["abnormality", "환상체 전투"], ["hard", "하드 전투"], ["hardAbnormality", "하드 환상체 전투"], ["boss", "보스 전투"]];
+function themeEnemyNames(p){
+  const e = p.enemies || {};
+  return THEME_ENEMY_POOLS.flatMap(([k]) => (e[k] || []).flat());
+}
+function themeEnemyChipHTML(name){
+  const idx = enemyIdxByGameName(name);
+  return idx >= 0
+    ? `<button type="button" class="gift-link-chip theme-enemy-chip" data-enemy-idx="${idx}" title="적 정보 보기">${escapeHTML(name)}</button>`
+    : `<span class="gift-tag theme-enemy-chip" title="사이트 적 정보에 없는 적">${escapeHTML(name)}</span>`;
+}
+function themeEnemiesHTML(p){
+  const e = p.enemies;
+  if (!e) return "";
+  const parts = THEME_ENEMY_POOLS.filter(([k]) => (e[k] || []).length).map(([k, label]) => {
+    // 보스는 전투마다 한 줄, 나머지는 등장할 수 있는 적 이름 목록
+    const inner = k === "boss"
+      ? e[k].map(battle => `<div class="theme-enemy-battle">${battle.map(themeEnemyChipHTML).join("")}</div>`).join("")
+      : `<div class="gift-recipe-row theme-gift-row">${e[k].map(themeEnemyChipHTML).join("")}</div>`;
+    return `<details class="theme-group"${k === "normal" || k === "boss" ? " open" : ""}><summary>${label} <span class="theme-cat-count">${k === "boss" ? `${e[k].length}가지` : `${e[k].length}종`}</span></summary>${inner}</details>`;
+  });
+  if (!parts.length) return "";
+  return `<h4 class="theme-detail-sub">등장 적 <span class="theme-detail-src">게임 데이터 기준 · 눌러서 적 정보 보기</span></h4>` + parts.join("");
+}
 function themeGiftChipHTML(name, hardOnly){
   const g = EGO_GIFT_DATA.find(x => x.name === name);
   const icon = g && g.icon ? `<img src="${g.icon}" alt="" width="22" height="22">` : "";
@@ -5908,7 +5938,7 @@ function openThemeDetail(name){
   row("층 길이", p.floorLength && `${p.floorLength}전투`);
   if (p.reward && p.reward !== "-") row("보상", p.reward);
   if (p.category === "정보 미작성"){
-    rows.push(`<div class="dealcalc-note">나무위키 테마팩 표에 아직 이 테마팩 정보가 없습니다. 기프트의 '한정' 문구로 확인된 전용 기프트만 표시합니다.</div>`);
+    rows.push(`<div class="dealcalc-note">나무위키 테마팩 표에 아직 이 테마팩 정보가 없습니다. 기프트의 '한정' 문구로 확인된 전용 기프트와 게임 데이터의 등장 적만 표시합니다.</div>`);
   }
   if ((p.bosses || []).length){
     rows.push(`<h4 class="theme-detail-sub">출현할 수 있는 보스</h4><div class="theme-boss-list">` + p.bosses.map(b => `
@@ -5919,6 +5949,7 @@ function openThemeDetail(name){
           <span>${escapeHTML(m.name)}</span></button>`;
       }).join(`<span class="theme-boss-and">&amp;</span>`)}</div>`).join("") + `</div>`);
   }
+  rows.push(themeEnemiesHTML(p));
   const excl = p.exclusive || [];
   rows.push(`<h4 class="theme-detail-sub">등장 E.G.O 기프트</h4>`);
   if (excl.length){

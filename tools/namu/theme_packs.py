@@ -4,14 +4,15 @@
 
 - 테마팩 표 3종(일반 / 히든 / 평행중첩 EXTREME 전용)과 기프트 그룹(그룹 A~J) 정의를 읽는다.
 - 등장 보스는 사이트 적 데이터(enemy_data.js)와 이름이 같으면 그 이미지를 쓰고, 없으면 나무위키 초상화를 images/theme_bosses/ 에 받는다.
-- 기프트 데이터의 "'테마' 한정" 문구에만 나오고 표에는 없는 테마(신규·지난 시즌)는 전용 기프트만 있는 항목으로 추가한다."""
+- 기프트 데이터의 "'테마' 한정" 문구에만 나오고 표에는 없는 테마(신규·지난 시즌)는 전용 기프트만 있는 항목으로 추가한다.
+- 등장 적(일반·환상체·하드·보스 전투)은 게임 데이터에서 채운다(tools/gamedata/md_enemies.py, 먼저 fetch_static.py --md)."""
 import io, json, os, re, sys, time, urllib.request, html as H
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import paths
 from fetch import fetch, last_modified
 import enemy_parser as P
 sys.path.insert(0, os.path.join(paths.TOOLS, 'gamedata'))
-import jsobj
+import jsobj, md_enemies
 
 SEASON_TITLES = {8: '시지프의 거울'}
 
@@ -163,6 +164,25 @@ def main():
                     mb['image'] = cache.get(mb.get('portrait'))
                 mb.pop('portrait', None)
 
+    # 등장 적: 게임 데이터 테마 이름(desc)과 맞춰 붙임. 보스는 전투별 목록, 나머지는 이름 합집합
+    unmatched = []
+    if md_enemies.available():
+        game = md_enemies.theme_enemies()
+        rev_alias = {norm(v): norm(k) for k, v in alias.items()}
+        used = set()
+        for p in packs:
+            k = norm(p['name']); e = game.get(k) or game.get(rev_alias.get(k, ''))
+            if not e: p['enemies'] = None; continue
+            used.add(norm(e['name']))
+            en = {}
+            for _, key in md_enemies.POOLS:
+                if key == 'boss': en[key] = e[key]
+                else: en[key] = list(dict.fromkeys(n for battle in e[key] for n in battle))
+            p['enemies'] = en
+        unmatched = [e['name'] for k, e in game.items() if k not in used]
+    else:
+        print('게임 데이터가 없어 등장 적은 건너뜀 (python tools/gamedata/fetch_static.py --md)')
+
     header = (f"// 나무위키 'Limbus Company/거울 던전/거울 던전 {season}' 테마팩 표에서 추출 (문서 최근 수정 {last_modified(html)}).\n"
               "// category: 일반 / 히든 / 평행중첩 EXTREME 전용 / 정보 미작성(기프트의 '한정' 문구에만 있고 표에는 없는 테마)\n"
               "// exclusive: 전용 기프트(hardOnly=하드 한정), groups: 공통 기프트 그룹(THEME_GIFT_GROUPS), bosses[].image: 적 데이터 이미지 또는 나무위키 초상화\n"
@@ -179,6 +199,13 @@ def main():
     print('이름 별칭:', alias)
     nob = [p['name'] for p in packs if not p['bosses'] and p['category'] != '정보 미작성']
     if nob: print('보스 정보 없는 테마:', nob)
+    noe = [p['name'] for p in packs if not p.get('enemies')]
+    if noe: print('게임 데이터와 이름이 안 맞는 테마:', noe)
+    if unmatched: print('사이트에 없는 게임 데이터 테마:', unmatched)
+    fixed = set(json.load(open(md_enemies.KR_SNAPSHOT, encoding='utf-8')).get('fromEnglish', {}).values())
+    eng = sorted({n for p in packs for v in (p.get('enemies') or {}).values() for x in v for n in (x if isinstance(x, list) else [x])
+                  if n not in fixed and not re.search(r'[가-힣]', n) and re.search(r'[A-Za-z]{3}', n)})
+    if eng: print('한국어 이름이 없는 적(kr_enemy_names_20261002.json의 fromEnglish에 추가):', eng)
 
 if __name__ == '__main__':
     main()
