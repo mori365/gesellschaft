@@ -27,6 +27,7 @@
         <button class="view-tab" id="tabSearch" aria-pressed="false">서폿패</button>
         <button class="view-tab" id="tabGift" aria-pressed="false">기프트</button>
         <button class="view-tab" id="tabTheme" aria-pressed="false">테마팩</button>
+        <button class="view-tab" id="tabChoice" aria-pressed="false">선택지</button>
         <button class="view-tab" id="tabEnemy" aria-pressed="false">적</button>
         <button class="view-tab" id="tabDealCalc" aria-pressed="false">딜뽕 계산기</button>
       </div>
@@ -105,6 +106,18 @@
       </div>
       <div class="reset-col">
         <button class="reset-all" id="themeResetAll">필터 초기화</button>
+      </div>
+    </div>
+    <div class="search-row" id="choiceSearchRow" hidden>
+      <div class="search-box">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="choiceSearchInput" type="text" placeholder="선택지 이름, 얻는 기프트, 테마팩, 지문으로 검색" autocomplete="off">
+        <button class="clear-btn" id="choiceClearSearch" aria-label="검색어 지우기" title="검색어 지우기">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="reset-col">
+        <button class="reset-all" id="choiceResetAll">필터 초기화</button>
       </div>
     </div>
     <div class="search-row" id="enemySearchRow" hidden>
@@ -272,6 +285,20 @@
     <div class="card-grid" id="themeGrid"></div>
     <div class="empty-state" id="themeEmptyState" hidden>
       <span class="display">일치하는 테마팩이 없습니다</span>
+      검색어나 선택한 분류를 조정해 보세요.
+    </div>
+  </main>
+</div>
+<div class="layout theme-layout" id="choiceView" hidden>
+  <main>
+    <div class="view-tabs mini-tabs theme-cat-tabs" role="tablist" id="choiceCatTabs"></div>
+    <div class="view-tabs mini-tabs choice-sub-tabs" role="tablist" id="choiceSubTabs" hidden></div>
+    <div class="results-head">
+      <div class="result-count"><b id="choiceShownCount"></b>개 선택지 표시 중</div>
+    </div>
+    <div class="card-grid" id="choiceGrid"></div>
+    <div class="empty-state" id="choiceEmptyState" hidden>
+      <span class="display">일치하는 선택지가 없습니다</span>
       검색어나 선택한 분류를 조정해 보세요.
     </div>
   </main>
@@ -621,6 +648,21 @@
     </div>
   </div>
 </div>
+<div id="choiceDetailModal" class="detail-modal" hidden>
+  <div class="detail-modal-backdrop" id="choiceDetailBackdrop"></div>
+  <div class="detail-modal-panel theme-detail-panel">
+    <div class="detail-modal-header">
+      <button type="button" class="detail-modal-back" id="choiceDetailBack" aria-label="뒤로" hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <span class="detail-modal-title" id="choiceDetailTitle"></span>
+      <button type="button" class="detail-modal-close" id="choiceDetailClose" aria-label="닫기">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="detail-modal-body" id="choiceDetailBody"></div>
+  </div>
+</div>
 <div id="themeDetailModal" class="detail-modal" hidden>
   <div class="detail-modal-backdrop" id="themeDetailBackdrop"></div>
   <div class="detail-modal-panel theme-detail-panel">
@@ -745,6 +787,7 @@
 <script src="ego_gift_data.js"></script>
 <script src="enemy_data.js"></script>
 <script src="theme_pack_data.js"></script>
+<script src="choice_event_data.js"></script>
 <script src="sync_data.js"></script>
 <script src="app.js"></script>
 </body>

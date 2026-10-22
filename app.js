@@ -5412,22 +5412,15 @@ function updateHeaderHeightVar(){
 }
 window.addEventListener("resize", updateHeaderHeightVar);
 function openOwnedView(){
-  document.getElementById("searchView").hidden = true;
-  document.getElementById("searchRow").hidden = true;
-  document.getElementById("skillSetSearchRow").hidden = true;
-  document.getElementById("searchFooter").hidden = true;
-  document.getElementById("skillSetView").hidden = true;
-  document.getElementById("deckView").hidden = true;
-  pickerView.hidden = true;
+  hideAllPanes();
   ownedView.hidden = false;
   setOwnedTab(ownedTab);
   updateHeaderHeightVar();
 }
 function closeOwnedView(){
   ownedView.hidden = true;
-  if (tabDeck.getAttribute("aria-pressed") === "true") showDeckView();
-  else if (tabSkillSet.getAttribute("aria-pressed") === "true") showSkillSetView();
-  else showSearchView();
+  // 열기 전에 보던 메뉴로 돌아간다
+  (VIEW_PANES.find(v => v.tab.getAttribute("aria-pressed") === "true") || VIEW_PANES[0]).show();
   renderBoth();
 }
 const settingsBtn = document.getElementById("settingsBtn");
@@ -5476,192 +5469,45 @@ const tabGift = document.getElementById("tabGift");
 const tabEnemy = document.getElementById("tabEnemy");
 const tabDealCalc = document.getElementById("tabDealCalc");
 const tabTheme = document.getElementById("tabTheme");
-function showSearchView(){
-  tabSearch.setAttribute("aria-pressed","true");
-  tabDeck.setAttribute("aria-pressed","false");
-  tabSkillSet.setAttribute("aria-pressed","false");
-  tabGift.setAttribute("aria-pressed","false");
-  tabTheme.setAttribute("aria-pressed","false");
-  tabEnemy.setAttribute("aria-pressed","false");
-  tabDealCalc.setAttribute("aria-pressed","false");
-  document.getElementById("searchView").hidden = false;
-  document.getElementById("searchRow").hidden = false;
-  document.getElementById("skillSetSearchRow").hidden = true;
-  document.getElementById("giftSearchRow").hidden = true;
-  document.getElementById("themeSearchRow").hidden = true;
-  document.getElementById("enemySearchRow").hidden = true;
-  document.getElementById("searchFooter").hidden = false;
-  document.getElementById("skillSetView").hidden = true;
-  document.getElementById("giftView").hidden = true;
-  document.getElementById("themeView").hidden = true;
-  document.getElementById("enemyView").hidden = true;
-  document.getElementById("dealCalcView").hidden = true;
-  document.getElementById("deckView").hidden = true;
+// 메뉴(탭)마다 보이는 영역. 탭을 바꾸면 나머지 메뉴의 영역은 모두 숨긴다.
+const tabChoice = document.getElementById("tabChoice");
+const VIEW_PANES = [
+  { tab: tabSearch,   show: showSearchView,   ids: ["searchView", "searchRow", "searchFooter"] },
+  { tab: tabDeck,     show: showDeckView,     ids: ["deckView"] },
+  { tab: tabSkillSet, show: showSkillSetView, ids: ["skillSetView", "skillSetSearchRow"] },
+  { tab: tabGift,     show: showGiftView,     ids: ["giftView", "giftSearchRow"] },
+  { tab: tabTheme,    show: showThemeView,    ids: ["themeView", "themeSearchRow"] },
+  { tab: tabChoice,   show: showChoiceView,   ids: ["choiceView", "choiceSearchRow"] },
+  { tab: tabEnemy,    show: showEnemyView,    ids: ["enemyView", "enemySearchRow"] },
+  { tab: tabDealCalc, show: showDealCalcView, ids: ["dealCalcView"] },
+];
+function hideAllPanes(){
+  VIEW_PANES.forEach(v => v.ids.forEach(id => { document.getElementById(id).hidden = true; }));
   pickerView.hidden = true;
   ownedView.hidden = true;
+}
+function activateView(tab){
+  hideAllPanes();
+  VIEW_PANES.forEach(v => {
+    v.tab.setAttribute("aria-pressed", String(v.tab === tab));
+    if (v.tab === tab) v.ids.forEach(id => { document.getElementById(id).hidden = false; });
+  });
   updateHeaderHeightVar();
 }
-function showSkillSetView(){
-  tabSearch.setAttribute("aria-pressed","false");
-  tabDeck.setAttribute("aria-pressed","false");
-  tabSkillSet.setAttribute("aria-pressed","true");
-  tabGift.setAttribute("aria-pressed","false");
-  tabTheme.setAttribute("aria-pressed","false");
-  tabEnemy.setAttribute("aria-pressed","false");
-  tabDealCalc.setAttribute("aria-pressed","false");
-  document.getElementById("searchView").hidden = true;
-  document.getElementById("searchRow").hidden = true;
-  document.getElementById("skillSetSearchRow").hidden = false;
-  document.getElementById("giftSearchRow").hidden = true;
-  document.getElementById("themeSearchRow").hidden = true;
-  document.getElementById("enemySearchRow").hidden = true;
-  document.getElementById("searchFooter").hidden = true;
-  document.getElementById("skillSetView").hidden = false;
-  document.getElementById("giftView").hidden = true;
-  document.getElementById("themeView").hidden = true;
-  document.getElementById("enemyView").hidden = true;
-  document.getElementById("dealCalcView").hidden = true;
-  document.getElementById("deckView").hidden = true;
-  pickerView.hidden = true;
-  ownedView.hidden = true;
-  updateHeaderHeightVar();
-  setSkillSetSubTab(state.skillSetSubTab);
-}
-function showDeckView(){
-  tabSearch.setAttribute("aria-pressed","false");
-  tabDeck.setAttribute("aria-pressed","true");
-  tabSkillSet.setAttribute("aria-pressed","false");
-  tabGift.setAttribute("aria-pressed","false");
-  tabTheme.setAttribute("aria-pressed","false");
-  tabEnemy.setAttribute("aria-pressed","false");
-  tabDealCalc.setAttribute("aria-pressed","false");
-  document.getElementById("searchView").hidden = true;
-  document.getElementById("searchRow").hidden = true;
-  document.getElementById("skillSetSearchRow").hidden = true;
-  document.getElementById("giftSearchRow").hidden = true;
-  document.getElementById("themeSearchRow").hidden = true;
-  document.getElementById("enemySearchRow").hidden = true;
-  document.getElementById("searchFooter").hidden = true;
-  document.getElementById("skillSetView").hidden = true;
-  document.getElementById("giftView").hidden = true;
-  document.getElementById("themeView").hidden = true;
-  document.getElementById("enemyView").hidden = true;
-  document.getElementById("dealCalcView").hidden = true;
-  document.getElementById("deckView").hidden = false;
-  pickerView.hidden = true;
-  ownedView.hidden = true;
-  updateHeaderHeightVar();
-  renderDeck();
-}
-function showGiftView(){
-  tabSearch.setAttribute("aria-pressed","false");
-  tabDeck.setAttribute("aria-pressed","false");
-  tabSkillSet.setAttribute("aria-pressed","false");
-  tabGift.setAttribute("aria-pressed","true");
-  tabTheme.setAttribute("aria-pressed","false");
-  tabEnemy.setAttribute("aria-pressed","false");
-  tabDealCalc.setAttribute("aria-pressed","false");
-  document.getElementById("searchView").hidden = true;
-  document.getElementById("searchRow").hidden = true;
-  document.getElementById("skillSetSearchRow").hidden = true;
-  document.getElementById("giftSearchRow").hidden = false;
-  document.getElementById("themeSearchRow").hidden = true;
-  document.getElementById("enemySearchRow").hidden = true;
-  document.getElementById("searchFooter").hidden = true;
-  document.getElementById("skillSetView").hidden = true;
-  document.getElementById("giftView").hidden = false;
-  document.getElementById("themeView").hidden = true;
-  document.getElementById("enemyView").hidden = true;
-  document.getElementById("dealCalcView").hidden = true;
-  document.getElementById("deckView").hidden = true;
-  pickerView.hidden = true;
-  ownedView.hidden = true;
-  updateHeaderHeightVar();
-  renderGiftView();
-}
-function showEnemyView(){
-  tabSearch.setAttribute("aria-pressed","false");
-  tabDeck.setAttribute("aria-pressed","false");
-  tabSkillSet.setAttribute("aria-pressed","false");
-  tabGift.setAttribute("aria-pressed","false");
-  tabTheme.setAttribute("aria-pressed","false");
-  tabEnemy.setAttribute("aria-pressed","true");
-  tabDealCalc.setAttribute("aria-pressed","false");
-  document.getElementById("searchView").hidden = true;
-  document.getElementById("searchRow").hidden = true;
-  document.getElementById("skillSetSearchRow").hidden = true;
-  document.getElementById("giftSearchRow").hidden = true;
-  document.getElementById("themeSearchRow").hidden = true;
-  document.getElementById("enemySearchRow").hidden = false;
-  document.getElementById("searchFooter").hidden = true;
-  document.getElementById("skillSetView").hidden = true;
-  document.getElementById("giftView").hidden = true;
-  document.getElementById("themeView").hidden = true;
-  document.getElementById("enemyView").hidden = false;
-  document.getElementById("dealCalcView").hidden = true;
-  document.getElementById("deckView").hidden = true;
-  pickerView.hidden = true;
-  ownedView.hidden = true;
-  updateHeaderHeightVar();
-  renderEnemyView();
-}
-function showDealCalcView(){
-  tabSearch.setAttribute("aria-pressed","false");
-  tabDeck.setAttribute("aria-pressed","false");
-  tabSkillSet.setAttribute("aria-pressed","false");
-  tabGift.setAttribute("aria-pressed","false");
-  tabTheme.setAttribute("aria-pressed","false");
-  tabEnemy.setAttribute("aria-pressed","false");
-  tabDealCalc.setAttribute("aria-pressed","true");
-  document.getElementById("searchView").hidden = true;
-  document.getElementById("searchRow").hidden = true;
-  document.getElementById("skillSetSearchRow").hidden = true;
-  document.getElementById("giftSearchRow").hidden = true;
-  document.getElementById("themeSearchRow").hidden = true;
-  document.getElementById("enemySearchRow").hidden = true;
-  document.getElementById("searchFooter").hidden = true;
-  document.getElementById("skillSetView").hidden = true;
-  document.getElementById("giftView").hidden = true;
-  document.getElementById("themeView").hidden = true;
-  document.getElementById("enemyView").hidden = true;
-  document.getElementById("dealCalcView").hidden = false;
-  document.getElementById("deckView").hidden = true;
-  pickerView.hidden = true;
-  ownedView.hidden = true;
-  updateHeaderHeightVar();
-  renderDealCalcView();
-}
-function showThemeView(){
-  tabSearch.setAttribute("aria-pressed","false");
-  tabDeck.setAttribute("aria-pressed","false");
-  tabSkillSet.setAttribute("aria-pressed","false");
-  tabGift.setAttribute("aria-pressed","false");
-  tabTheme.setAttribute("aria-pressed","true");
-  tabEnemy.setAttribute("aria-pressed","false");
-  tabDealCalc.setAttribute("aria-pressed","false");
-  document.getElementById("searchView").hidden = true;
-  document.getElementById("searchRow").hidden = true;
-  document.getElementById("skillSetSearchRow").hidden = true;
-  document.getElementById("giftSearchRow").hidden = true;
-  document.getElementById("themeSearchRow").hidden = false;
-  document.getElementById("enemySearchRow").hidden = true;
-  document.getElementById("searchFooter").hidden = true;
-  document.getElementById("skillSetView").hidden = true;
-  document.getElementById("giftView").hidden = true;
-  document.getElementById("themeView").hidden = false;
-  document.getElementById("enemyView").hidden = true;
-  document.getElementById("dealCalcView").hidden = true;
-  document.getElementById("deckView").hidden = true;
-  pickerView.hidden = true;
-  ownedView.hidden = true;
-  updateHeaderHeightVar();
-  renderThemeView();
-}
+function showSearchView(){ activateView(tabSearch); }
+function showSkillSetView(){ activateView(tabSkillSet); setSkillSetSubTab(state.skillSetSubTab); }
+function showDeckView(){ activateView(tabDeck); renderDeck(); }
+function showGiftView(){ activateView(tabGift); renderGiftView(); }
+function showEnemyView(){ activateView(tabEnemy); renderEnemyView(); }
+function showDealCalcView(){ activateView(tabDealCalc); renderDealCalcView(); }
+function showThemeView(){ activateView(tabTheme); renderThemeView(); }
+function showChoiceView(){ activateView(tabChoice); renderChoiceView(); }
 tabSearch.addEventListener("click", showSearchView);
 tabDeck.addEventListener("click", showDeckView);
 tabSkillSet.addEventListener("click", showSkillSetView);
 tabGift.addEventListener("click", showGiftView);
 tabTheme.addEventListener("click", showThemeView);
+tabChoice.addEventListener("click", showChoiceView);
 tabEnemy.addEventListener("click", showEnemyView);
 tabDealCalc.addEventListener("click", showDealCalcView);
 
@@ -5776,6 +5622,8 @@ function renderGiftDetail(name){
     const parts = [excl && `전용 ${excl}`, packs.size - excl && `공통 그룹 ${packs.size - excl}`].filter(Boolean).join(" · ");
     rows.push(`<div class="skill-tt-row"><span>등장 테마팩</span><span><button type="button" class="link-filter-open" id="giftDetailToThemes">테마팩 메뉴에서 ${packs.size}개 보기</button> <span class="link-filter-count">${parts}</span></span></div>`);
   }
+  const choices = GIFT_CHOICES.get(g.name) || [];
+  if (choices.length) rows.push(`<div class="skill-tt-row"><span>얻는 선택지</span><span class="gift-recipe-row">${choices.map(e => choiceLinkChipHTML(e)).join("")}</span></div>`);
   if (g.aliases && g.aliases.length) rows.push(`<div class="skill-tt-row"><span>통칭</span><span>${g.aliases.map(escapeHTML).join(", ")}</span></div>`);
   if (g.english) rows.push(`<div class="skill-tt-row"><span>영문명</span><span>${escapeHTML(g.english)}</span></div>`);
   if (g.associated) rows.push(`<div class="skill-tt-row"><span>연관</span><span>${escapeHTML(g.associated)}</span></div>`);
@@ -5917,26 +5765,28 @@ function showThemesForGift(name){
   showThemeView();
   window.scrollTo(0, 0);
 }
-/* 기프트 상세 ↔ 테마팩 상세 이동 기록: 상세 창 안의 링크로 옮겨 가면 이전 창을 기록해 '뒤로' 버튼으로 돌아간다.
+/* 기프트·테마팩·선택지 상세 사이 이동 기록: 상세 창 안의 링크로 옮겨 가면 이전 창을 기록해 '뒤로' 버튼으로 돌아간다.
    메뉴의 카드에서 새로 열거나 창을 닫으면 기록을 비운다. */
 const linkNav = { history: [], current: null };
+const LINK_NAV_MODALS = ["giftDetailModal", "themeDetailModal", "choiceDetailModal"];
+const LINK_NAV_BACKS = ["giftDetailBack", "themeDetailBack", "choiceDetailBack"];
 function linkNavShow(item){
-  document.getElementById("giftDetailModal").hidden = true;
-  document.getElementById("themeDetailModal").hidden = true;
-  const ok = item.type === "gift" ? renderGiftDetail(item.name) : renderThemeDetail(item.name);
+  LINK_NAV_MODALS.forEach(id => { document.getElementById(id).hidden = true; });
+  const render = {gift: renderGiftDetail, theme: renderThemeDetail, choice: renderChoiceDetail}[item.type];
+  const ok = render(item.name);
   if (!ok) return false;
   linkNav.current = item;
   const prev = linkNav.history[linkNav.history.length - 1];
-  ["giftDetailBack", "themeDetailBack"].forEach(id => {
+  LINK_NAV_BACKS.forEach(id => {
     const b = document.getElementById(id);
     b.hidden = !prev;
-    b.title = prev ? `뒤로: ${prev.name}` : "";
+    b.title = prev ? `뒤로: ${prev.type === "choice" ? (CHOICE_BY_ID.get(prev.name) || {}).name : prev.name}` : "";
   });
   return true;
 }
 function linkNavReset(){
   linkNav.history = []; linkNav.current = null;
-  ["giftDetailBack", "themeDetailBack"].forEach(id => { document.getElementById(id).hidden = true; });
+  LINK_NAV_BACKS.forEach(id => { document.getElementById(id).hidden = true; });
 }
 function linkNavOpen(type, name){ linkNavReset(); linkNavShow({type, name}); }
 function linkNavGo(type, name){
@@ -6045,6 +5895,16 @@ function themeEnemyChipHTML(name){
     ? `<button type="button" class="gift-link-chip theme-enemy-chip" data-enemy-idx="${idx}" title="적 정보 보기">${escapeHTML(name)}</button>`
     : `<span class="gift-tag theme-enemy-chip" title="사이트 적 정보에 없는 적">${escapeHTML(name)}</span>`;
 }
+function themeChoicesHTML(p){
+  const own = CHOICE_EVENTS.filter(e => e.category === "테마팩 전용" && e.theme === p.name);
+  const common = CHOICE_EVENTS.filter(e => (e.themes || []).includes(p.name));
+  if (!own.length && !common.length) return "";
+  const parts = [];
+  if (own.length) parts.push(`<div class="theme-detail-label">전용 선택지</div><div class="gift-recipe-row theme-gift-row">${own.map(e => choiceLinkChipHTML(e, false)).join("")}</div>`);
+  if (common.length) parts.push(`<details class="theme-group"><summary>나올 수 있는 공통 선택지 <span class="theme-cat-count">${common.length}개 · 게임 데이터 기준</span></summary>
+    <div class="gift-recipe-row theme-gift-row">${common.map(e => choiceLinkChipHTML(e, false)).join("")}</div></details>`);
+  return `<h4 class="theme-detail-sub">선택지</h4>` + parts.join("");
+}
 function themeEnemiesHTML(p){
   const e = p.enemies;
   if (!e) return "";
@@ -6088,6 +5948,7 @@ function renderThemeDetail(name){
       }).join(`<span class="theme-boss-and">&amp;</span>`)}</div>`).join("") + `</div>`);
   }
   rows.push(themeEnemiesHTML(p));
+  rows.push(themeChoicesHTML(p));
   const excl = p.exclusive || [];
   const giftCount = [...themeGiftSources(p).keys()].filter(n => EGO_GIFT_DATA.some(g => g.name === n)).length;
   rows.push(`<h4 class="theme-detail-sub">등장 E.G.O 기프트${giftCount ? ` <button type="button" class="link-filter-open" id="themeDetailToGifts">기프트 메뉴에서 ${giftCount}종 보기</button>` : ""}</h4>`);
@@ -6137,8 +5998,161 @@ document.addEventListener("click", e => {
   if (!chip) return;
   e.stopPropagation();
   // 기프트 상세 안의 칩이면 '뒤로'로 돌아올 수 있게 이동 기록을 남긴다
-  if (chip.closest("#giftDetailModal")) linkNavGo("theme", chip.dataset.theme);
+  if (chip.closest("#giftDetailModal, #choiceDetailModal")) linkNavGo("theme", chip.dataset.theme);
   else openThemeDetail(chip.dataset.theme);
+}, true);
+
+/* ---- 거울 던전 선택지 ----
+   데이터: choice_event_data.js (나무위키 선택지 문서, tools/namu/choice_events.py로 생성)
+   선택지 → 얻는 기프트·나오는 테마팩, 기프트·테마팩 상세에서 거꾸로 선택지로 연결한다. */
+const CHOICE_CATS = ["공통", "테마팩 전용", "전투 중"];
+const CHOICE_CAT_LABEL = {"공통": "공통 선택지", "테마팩 전용": "테마팩 전용", "전투 중": "전투 중 선택지"};
+// sub: 공통은 추가된 시즌(거울 던전 N), 테마팩 전용은 테마팩 이름으로 한 번 더 나눈다 (null = 전체)
+const choiceState = { cat: CHOICE_CATS[0], sub: null };
+const CHOICE_BY_ID = new Map(CHOICE_EVENTS.map(e => [e.id, e]));
+const choiceSubKey = e => e.category === "공통" ? e.season : (e.category === "테마팩 전용" ? e.theme : null);
+// 검색용: 이름·기프트·테마팩·표 안의 글자
+const CHOICE_HAY = new Map(CHOICE_EVENTS.map(e => [e.id, [e.name, e.season, e.theme, ...(e.gifts || []), ...(e.themes || []),
+  ...e.tables.flatMap(t => [t.title, ...t.rows.flat().flatMap(c => [c.text, c.msg, c.hint, c.label])])].filter(Boolean).join(" ").toLowerCase()]));
+// 기프트 이름 → 그 기프트를 얻을 수 있는 선택지
+const GIFT_CHOICES = (() => {
+  const m = new Map();
+  CHOICE_EVENTS.forEach(e => (e.gifts || []).forEach(g => {
+    if (!m.has(g)) m.set(g, []);
+    m.get(g).push(e);
+  }));
+  return m;
+})();
+// where: 칩 옆에 어디서 나오는지(테마팩 이름·전투 중) 작게 표시. 테마팩 상세 안에서는 끈다
+function choiceLinkChipHTML(e, where = true){
+  where = where && (e.category === "테마팩 전용" ? e.theme : (e.category === "전투 중" ? "전투 중" : ""));
+  return `<button type="button" class="choice-link-chip" data-choice="${escapeHTML(e.id)}">${escapeHTML(e.name)}${where ? `<span class="choice-link-where">${escapeHTML(where)}</span>` : ""}</button>`;
+}
+function choicePackChipHTML(name){
+  return THEME_PACKS.some(p => p.name === name)
+    ? `<button type="button" class="theme-link-chip" data-theme="${escapeHTML(name)}">${escapeHTML(name)}</button>`
+    : `<span class="gift-tag">${escapeHTML(name)}</span>`;
+}
+function renderChoiceCatTabs(){
+  const wrap = document.getElementById("choiceCatTabs");
+  const counts = Object.fromEntries(CHOICE_CATS.map(c => [c, CHOICE_EVENTS.filter(e => e.category === c).length]));
+  wrap.innerHTML = CHOICE_CATS.filter(c => counts[c]).map(c =>
+    `<button type="button" class="view-tab" data-cat="${escapeHTML(c)}" aria-pressed="${c === choiceState.cat}">${escapeHTML(CHOICE_CAT_LABEL[c])} <span class="theme-cat-count">${counts[c]}</span></button>`
+  ).join("");
+  wrap.querySelectorAll("button").forEach(btn => btn.addEventListener("click", () => {
+    choiceState.cat = btn.dataset.cat;
+    choiceState.sub = null;
+    renderChoiceView();
+  }));
+  const subs = [...new Set(CHOICE_EVENTS.filter(e => e.category === choiceState.cat).map(choiceSubKey).filter(Boolean))];
+  const subWrap = document.getElementById("choiceSubTabs");
+  const q = document.getElementById("choiceSearchInput").value.trim();
+  subWrap.hidden = subs.length < 2 || !!q;
+  subWrap.innerHTML = [`<button type="button" class="view-tab" data-sub="" aria-pressed="${!choiceState.sub}">전체</button>`]
+    .concat(subs.map(x => `<button type="button" class="view-tab" data-sub="${escapeHTML(x)}" aria-pressed="${x === choiceState.sub}">${escapeHTML(x)}</button>`)).join("");
+  subWrap.querySelectorAll("button").forEach(btn => btn.addEventListener("click", () => {
+    choiceState.sub = btn.dataset.sub || null;
+    renderChoiceView();
+  }));
+}
+function choiceCardHTML(e){
+  const tags = [];
+  if (e.category === "공통" && e.season) tags.push(`<span class="gift-tag">${escapeHTML(e.season)}</span>`);
+  if (e.category === "테마팩 전용" && e.theme) tags.push(choicePackChipHTML(e.theme));
+  if ((e.themes || []).length) tags.push(`<span class="gift-tag">테마팩 ${e.themes.length}곳</span>`);
+  const gifts = e.gifts || [];
+  return `
+    <div class="card theme-card choice-card" data-choice-card="${escapeHTML(e.id)}">
+      <div class="card-body">
+        ${e.image ? `<img class="choice-card-img" src="${e.image}" alt="" loading="lazy">` : `<div class="choice-card-img choice-card-noimg">?</div>`}
+        <div class="gift-card-name">${escapeHTML(e.name)}</div>
+        ${gifts.length ? `<div class="theme-card-bosses">기프트: ${gifts.map(escapeHTML).join(", ")}</div>` : ""}
+        <div class="gift-card-foot">${tags.join("")}</div>
+      </div>
+    </div>`;
+}
+function renderChoiceGrid(){
+  const q = document.getElementById("choiceSearchInput").value.trim().toLowerCase();
+  const list = CHOICE_EVENTS.filter(e => q
+    ? CHOICE_HAY.get(e.id).includes(q)
+    : e.category === choiceState.cat && (!choiceState.sub || choiceSubKey(e) === choiceState.sub));
+  document.getElementById("choiceShownCount").textContent = list.length;
+  const grid = document.getElementById("choiceGrid");
+  grid.innerHTML = list.map(choiceCardHTML).join("");
+  document.getElementById("choiceEmptyState").hidden = list.length > 0;
+  grid.querySelectorAll(".choice-card").forEach(el => el.addEventListener("click", () => openChoiceDetail(el.dataset.choiceCard)));
+}
+function renderChoiceView(){
+  renderChoiceCatTabs();
+  renderChoiceGrid();
+}
+// 표 칸 글자: 그 칸에서 얻는 기프트 이름은 기프트 링크로
+function choiceCellTextHTML(text, gifts){
+  let h = escapeHTML(text || "");
+  (gifts || []).slice().sort((a, b) => b.length - a.length).forEach(g => {
+    const esc = escapeHTML(g);
+    h = h.split(esc).join(`\u0000${g}\u0001`);
+  });
+  return h.replace(/\u0000([^\u0001]*)\u0001/g, (_, g) => `<button type="button" class="gift-link-chip choice-gift-inline" data-gift="${escapeHTML(g)}">${escapeHTML(g)}</button>`)
+    .replace(/\n/g, "<br>");
+}
+function choiceCellHTML(c){
+  const span = `${c.cs ? ` colspan="${c.cs}"` : ""}${c.rs ? ` rowspan="${c.rs}"` : ""}`;
+  if (c.k === "o") return `<td class="choice-opt"${span}><strong>${escapeHTML(c.msg)}</strong>${c.hint ? `<div class="choice-hint">${choiceCellTextHTML(c.hint, c.gifts)}</div>` : ""}</td>`;
+  if (c.k === "r") return `<td class="choice-res"${span}><details${(c.gifts || []).length ? " open" : ""}><summary>${escapeHTML(c.label || "결과")}</summary><div class="choice-res-text">${choiceCellTextHTML(c.text, c.gifts)}</div></details></td>`;
+  if (c.k === "i") return `<td${span}></td>`;   // 표 중간의 그림은 옮기지 않음
+  return `<td class="choice-text"${span}>${choiceCellTextHTML(c.text, c.gifts)}</td>`;
+}
+function renderChoiceDetail(id){
+  const e = CHOICE_BY_ID.get(id);
+  if (!e) return false;
+  document.getElementById("choiceDetailTitle").textContent = e.name;
+  const rows = [];
+  if (e.image) rows.push(`<img class="choice-detail-img" src="${e.image}" alt="">`);
+  const row = (k, v) => rows.push(`<div class="skill-tt-row"><span>${k}</span><span class="gift-recipe-row">${v}</span></div>`);
+  row("분류", escapeHTML(CHOICE_CAT_LABEL[e.category] + (e.season ? ` · ${e.season}에서 추가` : "")));
+  if (e.theme) row("테마팩", choicePackChipHTML(e.theme));
+  if ((e.gifts || []).length) row("얻는 기프트", e.gifts.map(g => EGO_GIFT_DATA.some(x => x.name === g) ? themeGiftChipHTML(g, false) : `<span class="gift-tag">${escapeHTML(g)}</span>`).join(""));
+  if ((e.themes || []).length){
+    rows.push(`<details class="theme-group"><summary>나오는 테마팩 <span class="theme-cat-count">${e.themes.length}곳 · 게임 데이터 기준</span></summary>
+      <div class="gift-recipe-row theme-gift-row">${e.themes.map(choicePackChipHTML).join("")}</div></details>`);
+  }
+  e.tables.forEach(t => {
+    if (t.title) rows.push(`<h4 class="theme-detail-sub">${escapeHTML(t.title)}</h4>`);
+    const body = t.rows.filter(r => !(r.length === 1 && r[0].k === "i")).map(r => `<tr>${r.map(choiceCellHTML).join("")}</tr>`).join("");
+    rows.push(`<div class="choice-table-wrap"><table class="choice-table"><tbody>${body}</tbody></table></div>`);
+  });
+  rows.push(`<div class="dealcalc-note">출처: 나무위키 선택지 문서. 결과의 기프트 이름을 누르면 기프트 정보로 이동합니다.</div>`);
+  const body = document.getElementById("choiceDetailBody");
+  body.innerHTML = rows.join("");
+  body.querySelectorAll("[data-gift]").forEach(el => el.addEventListener("click", ev => { ev.preventDefault(); linkNavGo("gift", el.dataset.gift); }));
+  document.getElementById("choiceDetailModal").hidden = false;
+  return true;
+}
+function openChoiceDetail(id){ linkNavOpen("choice", id); }
+function closeChoiceDetail(){ document.getElementById("choiceDetailModal").hidden = true; linkNavReset(); }
+document.getElementById("choiceDetailClose").addEventListener("click", closeChoiceDetail);
+document.getElementById("choiceDetailBackdrop").addEventListener("click", closeChoiceDetail);
+document.getElementById("choiceDetailBack").addEventListener("click", linkNavBack);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !document.getElementById("choiceDetailModal").hidden) closeChoiceDetail(); });
+document.getElementById("choiceSearchInput").addEventListener("input", renderChoiceView);
+document.getElementById("choiceClearSearch").addEventListener("click", () => {
+  document.getElementById("choiceSearchInput").value = "";
+  renderChoiceView();
+});
+document.getElementById("choiceResetAll").addEventListener("click", () => {
+  document.getElementById("choiceSearchInput").value = "";
+  choiceState.cat = CHOICE_CATS[0];
+  choiceState.sub = null;
+  renderChoiceView();
+});
+// 선택지 칩 → 선택지 상세 (상세 창 안이면 '뒤로'로 돌아올 수 있게 이동 기록)
+document.addEventListener("click", e => {
+  const chip = e.target.closest(".choice-link-chip");
+  if (!chip) return;
+  e.stopPropagation();
+  if (chip.closest("#giftDetailModal, #themeDetailModal, #choiceDetailModal")) linkNavGo("choice", chip.dataset.choice);
+  else openChoiceDetail(chip.dataset.choice);
 }, true);
 
 /* ---- 적 정보 ---- */

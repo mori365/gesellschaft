@@ -27,6 +27,26 @@ def _list(sub):
 def available():
     return os.path.isdir(os.path.join(paths.GAMEDATA, 'mirrordungeon-theme-floor'))
 
+def theme_names():
+    """테마 id → 화면 이름 (한국어 사본 우선, 없으면 영어)"""
+    names = {int(k): v for k, v in _load(KR_THEMES)['names'].items()}
+    for f in glob.glob(os.path.join(paths.GAMEDATA, 'loc_en', 'EN_MirrorDungeonTheme*.json')):
+        for x in _load(f).get('dataList', []):
+            if x.get('name'): names.setdefault(int(x['id']), x['name'])
+    return names
+
+def theme_events():
+    """{norm(테마 이름): {'name', 'events': [이벤트 id, ...]}} — 테마의 eventPool(그 테마에서 나올 수 있는 선택지)"""
+    names = theme_names()
+    out = {}
+    for t in _list('mirrordungeon-theme-floor'):
+        name = (names.get(t['id']) or t.get('desc') or '').strip()
+        if not name: continue
+        e = out.setdefault(norm(name), {'name': name, 'events': []})
+        for eid in (t.get('mapGenOption') or {}).get('eventPool') or []:
+            if eid not in e['events']: e['events'].append(eid)
+    return out
+
 def theme_enemies():
     """{norm(테마 이름): {'name', 'normal': [...], 'abnormality': [...], 'hard': [...], 'hardAbnormality': [...], 'boss': [...]}}
     각 목록은 전투(풀 안의 전투 하나)마다 등장 적 이름 목록. 같은 구성의 전투는 한 번만 넣는다."""
@@ -39,10 +59,7 @@ def theme_enemies():
     for f in glob.glob(os.path.join(paths.GAMEDATA, 'loc_en', 'EN_Enemies*.json')):
         for x in _load(f).get('dataList', []):
             if x.get('name'): en.setdefault(int(x['id']), x['name'])
-    theme_name = {int(k): v for k, v in _load(KR_THEMES)['names'].items()}
-    for f in glob.glob(os.path.join(paths.GAMEDATA, 'loc_en', 'EN_MirrorDungeonTheme*.json')):
-        for x in _load(f).get('dataList', []):
-            if x.get('name'): theme_name.setdefault(int(x['id']), x['name'])
+    theme_name = theme_names()
 
     def unit_name(uid):
         nid = units.get(uid, {}).get('nameID', uid)

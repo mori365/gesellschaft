@@ -476,6 +476,29 @@
   .link-filter-clear{ border-color:var(--border-strong); color:var(--text-muted); }
   .link-filter-clear:hover{ color:var(--text); background:var(--surface-2); }
   .theme-detail-sub .link-filter-open{ margin-left:8px; vertical-align:middle; }
+  /* ---------- 거울 던전 선택지 ---------- */
+  .choice-sub-tabs{ margin-top:-4px; }
+  .choice-sub-tabs[hidden]{ display:none; }
+  .choice-card-img{ width:100%; aspect-ratio:1024/673; object-fit:cover; border-radius:6px; background:var(--surface-2); display:block; }
+  .choice-card-noimg{ display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-weight:700; }
+  .choice-link-chip{
+    font:inherit; font-size:11.5px; font-weight:700; color:#0e8a7a; cursor:pointer;
+    background:color-mix(in srgb, #0e8a7a 10%, transparent); border:1px solid color-mix(in srgb, #0e8a7a 45%, transparent);
+    border-radius:5px; padding:2px 7px; display:inline-flex; align-items:center; gap:5px;
+  }
+  .choice-link-chip:hover{ border-color:#0e8a7a; }
+  .choice-link-where{ font-size:10px; font-weight:600; color:var(--text-faint); }
+  .choice-detail-img{ width:100%; max-width:480px; border-radius:8px; display:block; margin:0 auto 12px; }
+  .choice-table-wrap{ overflow-x:auto; margin:8px 0 12px; }
+  .choice-table{ width:100%; border-collapse:collapse; font-size:12.5px; line-height:1.55; }
+  .choice-table td{ border:1px solid var(--border); padding:8px 10px; vertical-align:top; min-width:120px; }
+  .choice-text{ color:var(--text-muted); }
+  .choice-opt{ text-align:center; background:var(--surface-2); }
+  .choice-opt strong{ color:var(--text); }
+  .choice-hint{ font-size:11.5px; color:var(--text-faint); margin-top:4px; }
+  .choice-res summary{ cursor:pointer; font-size:12px; font-weight:700; color:var(--text-muted); }
+  .choice-res-text{ margin-top:6px; color:var(--text); }
+  .choice-gift-inline{ display:inline; padding:0 5px; font-size:inherit; }
   .link-source-tag{ color:#8b5cf6; border-color:color-mix(in srgb, #8b5cf6 45%, transparent); }
 
   /* ---------- 적 정보 ---------- */
@@ -708,7 +731,7 @@
 
   /* ---------- deck builder ---------- */
   .deck-layout{ max-width:1180px; margin:0 auto; padding:22px 24px 60px; display:flex; flex-direction:column; gap:22px; }
-  #searchView[hidden], #deckView[hidden], #skillSetView[hidden], #giftView[hidden], #themeView[hidden], #enemyView[hidden], #dealCalcView[hidden], .search-row[hidden], footer.note[hidden]{ display:none !important; }
+  #searchView[hidden], #deckView[hidden], #skillSetView[hidden], #giftView[hidden], #themeView[hidden], #choiceView[hidden], #enemyView[hidden], #dealCalcView[hidden], .search-row[hidden], footer.note[hidden]{ display:none !important; }
   .gift-layout{ display:block; }
   .theme-layout{ display:block; }
   .enemy-layout{ display:block; }

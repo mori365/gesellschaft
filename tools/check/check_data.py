@@ -16,7 +16,7 @@ def main():
     errors, notes = [], []
     R = paths.REPO
     refs = set()
-    for f in ('app.js', 'image_refs.js', 'enemy_data.js', 'ego_gift_data.js', 'theme_pack_data.js'):
+    for f in ('app.js', 'image_refs.js', 'enemy_data.js', 'ego_gift_data.js', 'theme_pack_data.js', 'choice_event_data.js'):
         refs |= set(re.findall(r'["\'](images/[^"\']+\.(?:webp|png|jpg|svg))["\']', open(os.path.join(R, f), encoding='utf-8').read()))
     missing = sorted(p for p in refs if not os.path.exists(os.path.join(R, p)))
     notes.append(f'이미지 참조 {len(refs)}개')

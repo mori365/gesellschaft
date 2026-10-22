@@ -74,6 +74,17 @@ python tools/namu/theme_packs.py                       # 반영 (사이트 적 �
 - 적·테마 한국어 이름은 원본에서 한국어가 빠지기 전 사본(`tools/gamedata/kr_enemy_names_20261002.json`, `kr_theme_names_20261002.json`)을 씁니다.
   그 뒤 추가된 적은 영어 이름으로 나오니, 실행 결과에 영어 이름이 보이면 사이트 적 정보 이름에 맞춰 `kr_enemy_names_20261002.json`의 `fromEnglish`에, 새 테마는 `kr_theme_names_20261002.json`의 `names`에 넣습니다.
 
+### 거울 던전 선택지
+선택지 메뉴 데이터(`choice_event_data.js`)는 나무위키 `Limbus Company/선택지`(공통·전투 중 선택지)와 `Limbus Company/선택지/테마팩`(테마팩 전용) 문서에서 만듭니다.
+```
+python tools/gamedata/fetch_static.py --md                # (공통 선택지가 나오는 테마팩을 채우려면) 게임 데이터
+python tools/namu/choice_events.py --force --no-images    # 결과 확인 (이미지 안 받음)
+python tools/namu/choice_events.py                        # 반영 (새 선택지 이미지는 images/choice_events/에 저장)
+```
+- 결과 칸의 링크 글자가 사이트 기프트 이름과 같으면 '얻는 기프트'로 연결됩니다. 기프트를 추가한 뒤에도 다시 실행합니다.
+- 공통 선택지의 '나오는 테마팩'은 게임 데이터 테마 eventPool을 지문 앞부분(`tools/gamedata/kr_event_desc_20261002.json`)으로 맞춰 채웁니다.
+  2026-10-02 뒤에 추가된 이벤트는 한국어 지문이 없어 '못 맞춘 게임 이벤트 id'로 출력되니, 필요하면 그 사본에 직접 추가합니다.
+
 ## 4. 점검 후 커밋
 
 ```
