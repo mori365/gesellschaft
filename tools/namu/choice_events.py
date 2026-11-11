@@ -91,6 +91,8 @@ def parse_cell(attrs, c, gift_names):
 def parse_tables(seg, gift_names):
     tables = []
     for tm in re.finditer(r'<table.*?</table>', seg, re.S):
+        # 문서 맨 끝 문단 뒤에는 나무위키 광고(파워링크) 표가 붙는다. 광고 링크는 href="#s-.."(큰따옴표), 본문 링크는 작은따옴표
+        if re.search(r'href="#s-\d', tm.group(0)): continue
         rows = []
         for tr in re.findall(r'<tr.*?</tr>', tm.group(0), re.S):
             cells = [parse_cell(m.group(1), m.group(2), gift_names) for m in re.finditer(r'<td([^>]*)>(.*?)</td>', tr, re.S)]
@@ -222,9 +224,19 @@ def main():
     # 이미지
     os.makedirs(IMG_DIR, exist_ok=True)
     cache = json.load(open(CACHE, encoding='utf-8')) if os.path.exists(CACHE) else {}
+    # 나무위키 이미지 주소는 받을 때마다 바뀌므로, 주소로 못 찾으면 지금 데이터의 같은 선택지(id) 이미지를 다시 쓴다
+    out_path = os.path.join(paths.REPO, 'choice_event_data.js')
+    prev = {}
+    if os.path.exists(out_path):
+        for line in open(out_path, encoding='utf-8'):
+            if line.startswith('  {'):
+                e = json.loads(line.strip().rstrip(','))
+                if e.get('image'): prev[e['id']] = e['image']
     downloaded = 0
     for ev in events:
         u = ev.pop('portrait')
+        if u and u not in cache and ev['id'] in prev:
+            cache[u] = prev[ev['id']]
         if u and u not in cache and '--no-images' not in sys.argv:
             from PIL import Image
             req = urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0', 'Referer': 'https://namu.wiki/'})

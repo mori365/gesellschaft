@@ -147,12 +147,23 @@ def main():
     bdir = os.path.join(paths.REPO, 'images', 'theme_bosses'); os.makedirs(bdir, exist_ok=True)
     cache_path = os.path.join(paths.WORK, 'theme_boss_cache.json')
     cache = json.load(open(cache_path, encoding='utf-8')) if os.path.exists(cache_path) else {}
+    # 나무위키 이미지 주소는 받을 때마다 바뀌므로, 주소로 못 찾으면 지금 데이터에서 같은 이름 보스의 초상화를 다시 쓴다
+    prev = {}
+    out_path = os.path.join(paths.REPO, 'theme_pack_data.js')
+    if os.path.exists(out_path):
+        for line in open(out_path, encoding='utf-8'):
+            if line.startswith('  {'):
+                for bo in json.loads(line.strip().rstrip(','))['bosses']:
+                    for m in bo['members']:
+                        if (m.get('image') or '').startswith('images/theme_bosses/'): prev.setdefault(m['name'], m['image'])
     downloaded = 0
     for p in packs:
         for bo in p['bosses']:
             for mb in bo['members']:
                 en = match_enemy(mb['name'])
                 mb['enemy'] = en
+                if mb.get('portrait') and mb['portrait'] not in cache and mb['name'] in prev:
+                    cache[mb['portrait']] = prev[mb['name']]
                 if en:
                     mb['image'] = enemy_img[en]
                 elif mb.get('portrait') and '--no-images' not in sys.argv:

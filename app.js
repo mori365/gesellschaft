@@ -5704,7 +5704,8 @@ const GIFT_THEMES = (() => {
 // 제한 문구에서 테마 이름 부분을 뺀 나머지 (예: "하드 난이도,'화왕지절' 한정" → "하드 난이도 한정")
 function giftRestrictionWithoutThemes(g){
   if (!g.restriction) return null;
-  const rest = g.restriction.replace(/'[^']+'/g, "").replace(/\s*,\s*/g, ",").replace(/,+/g, ",").replace(/^,|,$/g, "").replace(/,(?=한정)/g, " ").replace(/\s+/g, " ").trim();
+  // "'A'&'B' 한정"처럼 &로 이은 테마 이름도 함께 뺀다
+  const rest = g.restriction.replace(/'[^']+'(?:\s*&\s*'[^']+')*/g, "").replace(/\s*,\s*/g, ",").replace(/,+/g, ",").replace(/^,|,$/g, "").replace(/,(?=한정)/g, " ").replace(/\s+/g, " ").trim();
   if (!rest || rest === "한정") return null;
   return rest;
 }
