@@ -186,8 +186,10 @@ const IDENTITY_BANNER_SYNCED_DATA = {
   "뫼르소|남부 리우 협회 6과": "images/banners_synced/157.webp",
   "홍루|콩콩이파 두목": "images/banners_synced/158.webp",
   "홍루|흑운회 와카슈": "images/banners_synced/159.webp",
+  "홍루|오트쿠튀르::르누아르 3F 방송실": "images/banners_synced/179.webp",
   "히스클리프|R사 제 4무리 토끼팀": "images/banners_synced/160.webp",
   "히스클리프|남부 시 협회 5과": "images/banners_synced/161.webp",
+  "히스클리프|오트쿠튀르::르루주 바느질의 왕": "images/banners_synced/180.webp",
   "이스마엘|R사 제 4무리 순록팀": "images/banners_synced/162.webp",
   "이스마엘|남부 시 협회 5과": "images/banners_synced/163.webp",
   "이스마엘|LCCB 대리": "images/banners_synced/164.webp",
@@ -373,9 +375,11 @@ const IDENTITY_BANNER_NORMAL_DATA = {
   "홍루|콩콩이파 두목": "images/banners_normal/163.webp",
   "홍루|흑운회 와카슈": "images/banners_normal/164.webp",
   "홍루|LCB 수감자": "images/banners_normal/165.webp",
+  "홍루|오트쿠튀르::르누아르 3F 방송실": "images/banners_normal/191.webp",
   "히스클리프|R사 제 4무리 토끼팀": "images/banners_normal/166.webp",
   "히스클리프|남부 시 협회 5과": "images/banners_normal/167.webp",
   "히스클리프|LCB 수감자": "images/banners_normal/168.webp",
+  "히스클리프|오트쿠튀르::르루주 바느질의 왕": "images/banners_normal/192.webp",
   "이스마엘|R사 제 4무리 순록팀": "images/banners_normal/169.webp",
   "이스마엘|남부 시 협회 5과": "images/banners_normal/170.webp",
   "이스마엘|LCCB 대리": "images/banners_normal/171.webp",
@@ -896,6 +900,7 @@ const IDENTITY_SKILL_ICON_DATA = {
   "홍루|콩콩이파 두목": {skill1:"images/ui/skill_icons/icon_0665.webp",skill2:"images/ui/skill_icons/icon_0666.webp",skill3:"images/ui/skill_icons/icon_0667.webp",def:"images/ui/skill_icons/icon_0668.webp"},
   "홍루|홍원 군주": {skill1:"images/ui/skill_icons/icon_0669.webp",skill2:"images/ui/skill_icons/icon_0670.webp",skill3:"images/ui/skill_icons/icon_0671.webp",def:"images/ui/skill_icons/icon_0672.webp"},
   "홍루|흑운회 와카슈": {skill1:"images/ui/skill_icons/icon_0673.webp",skill2:"images/ui/skill_icons/icon_0674.webp",skill3:"images/ui/skill_icons/icon_0675.webp",def:"images/ui/skill_icons/icon_0676.webp"},
+  "홍루|오트쿠튀르::르누아르 3F 방송실": {skill1:"images/ui/skill_icons/icon_1084.webp",skill2:"images/ui/skill_icons/icon_1085.webp",skill3:"images/ui/skill_icons/icon_1086.webp",def:"images/ui/skill_icons/icon_1087.webp"},
   "히스클리프|LCB 수감자": {skill1:"images/ui/skill_icons/icon_0677.webp",skill2:"images/ui/skill_icons/icon_0678.webp",skill3:"images/ui/skill_icons/icon_0679.webp",def:"images/ui/skill_icons/icon_0680.webp"},
   "히스클리프|N사 작은 망치": {skill1:"images/ui/skill_icons/icon_0681.webp",skill2:"images/ui/skill_icons/icon_0682.webp",skill3:"images/ui/skill_icons/icon_0683.webp",def:"images/ui/skill_icons/icon_0684.webp"},
   "히스클리프|R사 제 4무리 토끼팀": {skill1:"images/ui/skill_icons/icon_0685.webp",skill2:"images/ui/skill_icons/icon_0686.webp",skill3:"images/ui/skill_icons/icon_0687.webp",def:"images/ui/skill_icons/icon_0688.webp"},
@@ -912,6 +917,7 @@ const IDENTITY_SKILL_ICON_DATA = {
   "히스클리프|피쿼드호 작살잡이": {skill1:"images/ui/skill_icons/icon_0729.webp",skill2:"images/ui/skill_icons/icon_0730.webp",skill3:"images/ui/skill_icons/icon_0731.webp",def:"images/ui/skill_icons/icon_0732.webp"},
   "히스클리프|흑수 - 유 필두": {skill1:"images/ui/skill_icons/icon_0733.webp",skill2:"images/ui/skill_icons/icon_0734.webp",skill3:"images/ui/skill_icons/icon_0735.webp",def:"images/ui/skill_icons/icon_0736.webp"},
   "히스클리프|흑운회 와카슈": {skill1:"images/ui/skill_icons/icon_0737.webp",skill2:"images/ui/skill_icons/icon_0738.webp",skill3:"images/ui/skill_icons/icon_0739.webp",def:"images/ui/skill_icons/icon_0740.webp"},
+  "히스클리프|오트쿠튀르::르루주 바느질의 왕": {skill1:"images/ui/skill_icons/icon_1089.webp",skill2:"images/ui/skill_icons/icon_1090.webp",skill3:"images/ui/skill_icons/icon_1091.webp",def:"images/ui/skill_icons/icon_1092.webp"},
 };
 
 const IDENTITY_SPECIAL_SKILL_ICON_DATA = {
@@ -957,11 +963,13 @@ const IDENTITY_SPECIAL_SKILL_ICON_DATA = {
   "홍루|거미집 약지 아비": {"우린 피와 살을 사랑한답니다":"images/ui/skill_icons/icon_0787.webp","설치 미술 제 3호 '간이늑골'":"images/ui/skill_icons/icon_0788.webp","폐장 - 설치미술 제 1호 '여러분이 흩뿌린 살과 뼈가 객석이 되어'":"images/ui/skill_icons/icon_0789.webp","반달리즘은 사절이랍니다":"images/ui/skill_icons/icon_0790.webp"},
   "홍루|마침표 사무소 대표": {"근접 지원":"images/ui/skill_icons/icon_0780.webp","연계: 타겟 지정":"images/ui/skill_icons/icon_0781.webp","연계: 삶의 마침표":"images/ui/skill_icons/icon_0782.webp","그림자의 건너편":"images/ui/skill_icons/icon_0783.webp"},
   "홍루|홍원 군주": {"군주의 길을 열겠다":"images/ui/skill_icons/icon_0784.webp","혈혈단신, 사생취원[孑孑單身, 捨生取园]":"images/ui/skill_icons/icon_0785.webp","호위":"images/ui/skill_icons/icon_0786.webp"},
+  "홍루|오트쿠튀르::르누아르 3F 방송실": {"경고방송":"images/ui/skill_icons/icon_1088.webp"},
   "히스클리프|거미집 엄지 제자": {"세치오나투라 디 체르보":"images/ui/skill_icons/icon_0796.webp","지키겠습니다.":"images/ui/skill_icons/icon_0797.webp"},
   "히스클리프|마침표 사무소 해결사": {"로직 아틀리에제 고속분쇄탄":"images/ui/skill_icons/icon_0792.webp","엄폐":"images/ui/skill_icons/icon_0793.webp"},
   "히스클리프|와일드헌트": {"비탄하고, 애탄하며, 파탄하라":"images/ui/skill_icons/icon_0791.webp"},
   "히스클리프|중지 작은 형님": {"전원, 처형이다!!":"images/ui/skill_icons/icon_0795.webp"},
   "히스클리프|흑수 - 유 필두": {"혈천하계무난도[血天下鷄舞亂刀]":"images/ui/skill_icons/icon_0794.webp"},
+  "히스클리프|오트쿠튀르::르루주 바느질의 왕": {"옆선 바깥에 박음선 두 줄 보이면 더블니들. 탈락!":"images/ui/skill_icons/icon_1093.webp"},
 };
 
 const SIN_SKILL_FRAME_DATA = {
@@ -1256,8 +1264,10 @@ const IDENTITY_PORTRAIT_SYNCED_DATA = {
   "뫼르소|남부 리우 협회 6과": "images/portraits_synced/157.webp",
   "홍루|콩콩이파 두목": "images/portraits_synced/158.webp",
   "홍루|흑운회 와카슈": "images/portraits_synced/159.webp",
+  "홍루|오트쿠튀르::르누아르 3F 방송실": "images/portraits_synced/179.webp",
   "히스클리프|R사 제 4무리 토끼팀": "images/portraits_synced/160.webp",
   "히스클리프|남부 시 협회 5과": "images/portraits_synced/161.webp",
+  "히스클리프|오트쿠튀르::르루주 바느질의 왕": "images/portraits_synced/180.webp",
   "이스마엘|R사 제 4무리 순록팀": "images/portraits_synced/162.webp",
   "이스마엘|남부 시 협회 5과": "images/portraits_synced/163.webp",
   "이스마엘|LCCB 대리": "images/portraits_synced/164.webp",
@@ -1443,9 +1453,11 @@ const IDENTITY_PORTRAIT_NORMAL_DATA = {
   "홍루|콩콩이파 두목": "images/portraits_normal/163.webp",
   "홍루|흑운회 와카슈": "images/portraits_normal/164.webp",
   "홍루|LCB 수감자": "images/portraits_normal/165.webp",
+  "홍루|오트쿠튀르::르누아르 3F 방송실": "images/portraits_normal/191.webp",
   "히스클리프|R사 제 4무리 토끼팀": "images/portraits_normal/166.webp",
   "히스클리프|남부 시 협회 5과": "images/portraits_normal/167.webp",
   "히스클리프|LCB 수감자": "images/portraits_normal/168.webp",
+  "히스클리프|오트쿠튀르::르루주 바느질의 왕": "images/portraits_normal/192.webp",
   "이스마엘|R사 제 4무리 순록팀": "images/portraits_normal/169.webp",
   "이스마엘|남부 시 협회 5과": "images/portraits_normal/170.webp",
   "이스마엘|LCCB 대리": "images/portraits_normal/171.webp",
@@ -1628,6 +1640,7 @@ const IDENTITY_PORTRAIT_FULL_NORMAL_DATA = {
   "홍루|콩콩이파 두목": "images/portraits_full/163.webp",
   "홍루|홍원 군주": "images/portraits_full/38.webp",
   "홍루|흑운회 와카슈": "images/portraits_full/164.webp",
+  "홍루|오트쿠튀르::르누아르 3F 방송실": "images/portraits_full/191.webp",
   "히스클리프|LCB 수감자": "images/portraits_full/168.webp",
   "히스클리프|N사 작은 망치": "images/portraits_full/145.webp",
   "히스클리프|R사 제 4무리 토끼팀": "images/portraits_full/166.webp",
@@ -1659,6 +1672,7 @@ const IDENTITY_PORTRAIT_FULL_NORMAL_DATA = {
   "파우스트|LCE E.G.O::홍염살": "images/portraits_full/59.webp",
   "파우스트|검지 수행자:【쪽지】": "images/portraits_full/24.webp",
   "히스클리프|로보토미 E.G.O::여우비": "images/portraits_full/134.webp",
+  "히스클리프|오트쿠튀르::르루주 바느질의 왕": "images/portraits_full/192.webp",
 };
 
 // wiki.gg 원본 크롭 없는 풀 일러스트(동기화 후/Uptied). LCB 수감자는 동기화 상태가 없어서 없음.
@@ -1810,6 +1824,7 @@ const IDENTITY_PORTRAIT_FULL_SYNCED_DATA = {
   "홍루|콩콩이파 두목": "images/portraits_full_synced/163.webp",
   "홍루|홍원 군주": "images/portraits_full_synced/38.webp",
   "홍루|흑운회 와카슈": "images/portraits_full_synced/164.webp",
+  "홍루|오트쿠튀르::르누아르 3F 방송실": "images/portraits_full_synced/190.webp",
   "히스클리프|N사 작은 망치": "images/portraits_full_synced/145.webp",
   "히스클리프|R사 제 4무리 토끼팀": "images/portraits_full_synced/166.webp",
   "히스클리프|W사 4등급 정리 요원 - CCA": "images/portraits_full_synced/33.webp",
@@ -1840,6 +1855,7 @@ const IDENTITY_PORTRAIT_FULL_SYNCED_DATA = {
   "파우스트|LCE E.G.O::홍염살": "images/portraits_full_synced/59.webp",
   "파우스트|검지 수행자:【쪽지】": "images/portraits_full_synced/24.webp",
   "히스클리프|로보토미 E.G.O::여우비": "images/portraits_full_synced/134.webp",
+  "히스클리프|오트쿠튀르::르루주 바느질의 왕": "images/portraits_full_synced/191.webp",
   "파우스트|거미집 약지 제자": "images/portraits_full_synced/14.webp",
 };
 
