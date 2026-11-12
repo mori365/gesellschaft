@@ -12,6 +12,7 @@
 
 ```
 python tools/gamedata/fetch_static.py --loc   # 게임 데이터·한국어 이름 받기 (바뀐 파일만)
+python tools/gamedata/fetch_yeonsim.py        # (OpenLethe가 늦을 때) 팬 사이트 연심 저장소의 게임 데이터·한국어 이름으로 덮어쓰기
 python tools/gamedata/check_new.py            # 게임엔 있는데 사이트에 없는 인격·E.G.O
 python tools/namu/gift_diff.py --force        # 나무위키 기프트 문서와 대조: 새 기프트, 효과·코스트가 바뀐 기프트
 python tools/namu/fetch.py "Limbus Company/전투/목록"   # 새 장(챕터) 전투 문서가 생겼는지
@@ -19,6 +20,8 @@ python tools/namu/to_text.py "Limbus Company_전투_목록.html" 전투목록.tx
 ```
 
 - `check_new.py`의 "한국어 이름 아직 없음"이나 추가일이 오늘·어제인 항목은 나무위키 문서가 아직 없거나 작성 중일 가능성이 큽니다.
+- OpenLethe는 2026-11 기준 게임 업데이트를 며칠~몇 주 늦게 따라오고 한국어 파일도 없습니다. 연심(yeon-sim.github.io) 저장소는 업데이트 당일 갱신되고
+  형식이 같아 `fetch_yeonsim.py`로 덮어써서 쓸 수 있습니다(공식 한국어 스킬 텍스트도 있음: `data/lang/kr`).
 - 적 데이터는 현재 0장~10장(10장은 상편·중편·하편 그림자계만, 상징계는 실시간 전투라 제외)까지 있습니다.
 
 ## 2. 나무위키 문서가 준비됐는지 판단

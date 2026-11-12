@@ -131,6 +131,7 @@ def build_event(name, seg, gift_names, extra):
                 img = img or r[0]['img']; continue
             if all(c['k'] == 't' and not c['text'] for c in r): continue
             new_rows.append(r)
+        if not new_rows: continue   # 그림만 있던 표·광고 표의 빈 껍데기
         out_tables.append({'title': title, 'rows': new_rows} if title and norm(title) != norm(name) else {'rows': new_rows})
     ev['portrait'] = img
     ev['tables'] = out_tables
