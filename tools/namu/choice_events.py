@@ -85,6 +85,12 @@ def parse_cell(attrs, c, gift_names):
             cell['k'] = 'i'; cell['img'] = img
         else:
             cell['k'] = 't'; cell['text'] = clean_text(c)
+    # "E.G.O 기프트 X 소멸!"처럼 잃는 줄에만 나오는 기프트는 얻는 기프트가 아님
+    lines = clean_text(c).split('\n')
+    def only_lost(g):
+        ls = [l for l in lines if g in l]
+        return ls and all(re.search(r'소멸|잃|제거|반납', l) and '획득' not in l for l in ls)
+    gifts = [g for g in gifts if not only_lost(g)]
     if gifts: cell['gifts'] = gifts
     return cell
 

@@ -6,7 +6,8 @@ OpenLethe(fetch_static.py)가 게임 업데이트를 늦게 따라올 때 쓴다
 - 연심 경로 → 로컬 폴더: data/personality/info → personality, data/personality/skill → skill,
   data/personality/passive → passive·personality-passive, data/egoskill → ego(ego-N)·skill(ego-skill-N),
   data/lang/kr/**/KR_Personalities·KR_Egos·KR_EGOgift_* → loc
-- 연심 저장소에서 받은 파일은 다음 fetch_static.py 실행 때 OpenLethe 판으로 다시 바뀔 수 있다(내용이 같으면 그대로).
+- 게임 데이터 파일은 덮어쓰지 않고 로컬(OpenLethe)에 없는 항목만 더한다. 한국어 이름(loc)은 연심 판으로 바꾼다.
+  그래서 fetch_static.py를 먼저, 이 스크립트를 나중에 돌린다.
 - 데이터 저작권은 Project Moon. 연심은 이 자료에 권리를 주장하지 않음(저장소 NOTICE.md)."""
 import json, os, sys, urllib.request
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -47,6 +48,18 @@ def main():
         dst = os.path.join(paths.GAMEDATA, sub, os.path.basename(item['path']))
         data = get(f'https://raw.githubusercontent.com/{REPO}/{BRANCH}/{item["path"]}')
         if os.path.exists(dst) and open(dst, 'rb').read() == data: continue
+        if sub != 'loc' and os.path.exists(dst):
+            # 게임 데이터는 이미 있는 항목(id)을 덮어쓰지 않고 없는 항목만 더한다.
+            # 연심과 OpenLethe 중 어느 쪽이 더 최신인지는 때마다 다르다(2026-11-19 OpenLethe가 출시 후 조정값을 먼저 반영).
+            mine = json.load(open(dst, encoding='utf-8-sig')); theirs = json.loads(data.decode('utf-8-sig'))
+            key = 'personalityID' if sub == 'personality-passive' else 'id'
+            have = {x.get(key) for x in mine.get('list', [])}
+            extra = [x for x in theirs.get('list', []) if x.get(key) not in have]
+            if not extra: continue
+            mine['list'] += extra
+            json.dump(mine, open(dst, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+            changed.append(f'added {len(extra)}\t{sub}/{os.path.basename(dst)}')
+            continue
         changed.append(f"{'changed' if os.path.exists(dst) else 'new'}\t{sub}/{os.path.basename(dst)}")
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         open(dst, 'wb').write(data)

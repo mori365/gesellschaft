@@ -101,11 +101,17 @@ def site_fields(n):
     """나무위키 카드 → 사이트 데이터 형식. '[구매불가]'는 코스트 앞에 붙어 있어 제한 문구로 들어와 있음."""
     restr = n.get('restriction') or ''
     cost = n.get('cost')
-    purch = '[구매불가]' not in restr
-    m = re.match(r'^(\d+)\s*\[구매불가\]\s*', restr)
+    # 코스트 칸 뒤의 태그: [구매불가], [선택지전용](선택지로만 얻음 → 구매 불가), [저주&축복](저주·축복 기프트, 구매 가능)
+    purch = '[구매불가]' not in restr and '[선택지전용]' not in restr
+    choice_only = '[선택지전용]' in restr
+    m = re.match(r'^(\d+)\s*\[(?:구매불가|선택지전용|저주&축복)\]\s*', restr)
     if m:
         cost = int(m.group(1)); restr = restr[m.end():]
-    restr = restr.replace('[구매불가]', '').replace(' , ', ',').replace(' ,', ',').strip() or None
+    for tag in ('[구매불가]', '[선택지전용]', '[저주&축복]'):
+        restr = restr.replace(tag, '')
+    restr = restr.replace(' , ', ',').replace(' ,', ',').strip()
+    if choice_only: restr = (restr + ',' if restr else '') + '선택지 전용'
+    restr = restr or None
     return {'rank': n['rank'], 'rankNum': RANK_NUM.get(n['rank']), 'keyword': n.get('keyword'), 'cost': cost,
             'purchasable': purch, 'restriction': restr, 'grade': n.get('grade'), 'associated': n.get('associated'),
             'firstAppearance': n.get('firstAppearance'), 'upgradable': n.get('upgradable'), 'effect': n['effect'],
